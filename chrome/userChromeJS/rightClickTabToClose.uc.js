@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name            activateTabOnHover.uc.js
-// @description     激活鼠标指向标签页
+// @name            rightClickTabToClose.uc.js
+// @description     右键关闭标签页
 // @license         MIT License
 // @compatibility   Vivaldi 6
 // @version         0.0.1
