@@ -5,7 +5,7 @@
 // @compatibility   Vivaldi 6
 // @version         0.0.1
 // @charset         UTF-8
-// @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/master/userChromeJS
+// @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
 (function activateTab(tabContainer, delay = 200, wait) {
   function hover(e, tab) {
