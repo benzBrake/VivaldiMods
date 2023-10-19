@@ -17,7 +17,6 @@
                     !e.shiftKey &&
                     !e.ctrlKey
                 ) {
-                    console.log('rightClick');
                     e.stopPropagation();
                     e.preventDefault();
                     const id = Number(tab.id.replace(/^\D+/g, ""));
@@ -33,14 +32,14 @@
     bindEvent(tabContainer);
 
     // 调整标签位置后重新绑定事件
-    // let appendChild = Element.prototype.appendChild;
-    // Element.prototype.appendChild = function () {
-    //     if (
-    //         arguments[0].tagName === "DIV" &&
-    //         arguments[0].classList.contains("tabbar-wrapper")
-    //     ) {
-    //         bindEvent(arguments[0].querySelector('#tabs-container .tab-strip'));
-    //     }
-    //     return appendChild.apply(this, arguments);
-    // };
+    let appendChild = Element.prototype.appendChild;
+    Element.prototype.appendChild = function () {
+        if (
+            arguments[0].tagName === "DIV" &&
+            arguments[0].classList.contains("tabbar-wrapper")
+        ) {
+            bindEvent(arguments[0].querySelector('#tabs-container .tab-strip'));
+        }
+        return appendChild.apply(this, arguments);
+    };
 })(document.querySelector('#tabs-container .tab-strip'));
