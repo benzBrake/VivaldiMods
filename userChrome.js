@@ -32,6 +32,7 @@
             }, 500)
         },
         listMods(directory) {
+            console.log("getMods: " + directory.fullPath.replace('/crxfs/', ''));
             directory.createReader().readEntries(e => {
                 e.forEach(mod => {
                     if (mod.isDirectory) {
@@ -78,7 +79,7 @@
     }
 
     function injectCSS(file) {
-        console.log("Injecting script: " + file.replace(MODS_DIRECTORY_NAME + '/', ''));
+        console.log("Injecting style: " + file.replace(MODS_DIRECTORY_NAME + '/', ''));
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = file;
