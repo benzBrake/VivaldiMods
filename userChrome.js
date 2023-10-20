@@ -10,7 +10,7 @@
 // ==/UserScript==
 (function () {
     const MODS_DIRECTORY_NAME = 'chrome';
-    const MODS_SCRIPT_EXTENSION = '.uc.js';
+    const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
 
     window.userChrome_js = {
