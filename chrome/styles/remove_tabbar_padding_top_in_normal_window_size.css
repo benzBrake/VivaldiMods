@@ -1,0 +1,20 @@
+.tabs-top.address-top#browser.win:not(.fullscreen, .disable-titlebar) #header {
+    min-height: calc(30px / var(--uiZoomLevel));
+}
+
+.win.normal #tabs-tabbar-container.top,
+.linux.normal #tabs-tabbar-container.top {
+    padding-top: 0px;
+}
+
+.tab-position .tab .tab-header {
+    flex: 0 0 30px;
+}
+
+.tabs-top#browser.win .window-buttongroup button:not(.vivaldi) {
+    height: 30px;
+}
+
+.vivaldi {
+    margin-top: 0;
+}
