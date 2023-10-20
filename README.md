@@ -4,7 +4,7 @@ Vivaldi 自定义内容收藏夹
 
 ## userChrome.js
 
-Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.uc.js`
+Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.as.js`
 
 ### 安装方法
 
