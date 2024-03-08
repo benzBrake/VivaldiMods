@@ -1,5 +1,8 @@
+#app {
+    --tab-min-height: 30px;
+}
 .tabs-top.address-top#browser.win:not(.fullscreen, .disable-titlebar) #header {
-    min-height: calc(30px / var(--uiZoomLevel));
+    min-height: calc(var(--tab-min-height) / var(--uiZoomLevel));
 }
 
 .win.normal #tabs-tabbar-container.top,
@@ -8,13 +11,14 @@
 }
 
 .tab-position .tab .tab-header {
-    flex: 0 0 30px;
+    flex: 0 0 calc(var(--tab-min-height) / var(--uiZoomLevel));
 }
 
 .tabs-top#browser.win .window-buttongroup button:not(.vivaldi) {
-    height: 30px;
+    height: calc(var(--tab-min-height) / var(--uiZoomLevel));
 }
 
 .vivaldi {
-    margin-top: 0;
+    margin: 0;
+    height: calc(var(--tab-min-height) / var(--uiZoomLevel));
 }
