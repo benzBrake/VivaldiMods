@@ -1,16 +1,12 @@
-// ==UserScript==
-// @name            activateTabOnHover.uc.js
-// @description     激活鼠标指向标签页
-// @license         MIT License
-// @compatibility   Vivaldi 6
-// @version         0.0.1
-// @charset         UTF-8
-// @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
-// ==/UserScript==
-(function activateTab(tabContainer, delay = 200, wait) {
+// Activate Tab On Hover
+// version 2022.10.0
+// https://forum.vivaldi.net/post/395460
+// Activates tab on hover.
+
+(function activateTab() {
   function hover(e, tab) {
     if (
-      !tab.classList.contains("active") &&
+      !tab.parentNode.classList.contains("active") &&
       !e.shiftKey &&
       !e.ctrlKey
     ) {
@@ -18,34 +14,45 @@
         clearTimeout(wait);
         tab.removeEventListener("mouseleave", tab);
       });
-      wait = setTimeout(function () {
-        const id = Number(tab.id.replace(/^\D+/g, ""));
-        chrome.tabs.update(id, { active: true, highlighted: true });
+      wait = setTimeout(async function () {
+        if (tab.parentNode.parentNode.classList.contains("is-substack")) {
+          let groupId = tab.parentNode.id.replace(/^tab-/g, "");
+          let tabs = await chrome.tabs.query({ currentWindow: true });
+          tabs = tabs.filter(t => {
+            return JSON.parse(t.vivExtData).group == groupId;
+          });
+          tabs.forEach(t => {
+            // 待完成标签组切换
+          })
+        } else {
+          const id = Number(tab.parentNode.id.replace(/^\D+/g, ""));
+          chrome.tabs.update(id, { active: true, highlighted: true });
+        }
       }, delay);
     }
   }
 
-  // 绑定事件
-  function bindEvent(tabContainer) {
-    tabContainer.addEventListener("mouseover", (event) => {
-      let tab = event.target.closest('.tab');
-      if (tab) {
-        hover(event, tab);
-      }
-    });
-  }
+  let wait;
+  const delay = 300; //pick a time in milliseconds
 
-  bindEvent(tabContainer);
+  // 脚本加载时部分标签已经存在
+  document.querySelectorAll('div.tab-header').forEach((e) => {
+    e.addEventListener("mouseover", function (event) { hover(event, e) });
+  });
 
-  // 调整标签位置后重新绑定事件
   let appendChild = Element.prototype.appendChild;
   Element.prototype.appendChild = function () {
     if (
       arguments[0].tagName === "DIV" &&
-      arguments[0].classList.contains("tabbar-wrapper")
+      arguments[0].classList.contains("tab-header")
     ) {
-      bindEvent(arguments[0].querySelector('#tabs-container .tab-strip'));
+      setTimeout(
+        function () {
+          const trigger = (event) => hover(event, arguments[0]);
+          arguments[0].addEventListener("mouseenter", trigger);
+        }.bind(this, arguments[0])
+      );
     }
     return appendChild.apply(this, arguments);
   };
-})(document.querySelector('#tabs-container .tab-strip'), 150);
+})();
