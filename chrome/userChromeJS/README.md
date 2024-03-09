@@ -1,0 +1,7 @@
+# 文件说明
+
+| 文件名                      | 作用                           |
+| --------------------------- | ------------------------------ |
+| activateTabOnHover.ac.js    | 自动激活鼠标指向标签页         |
+| global-media-controls.ac.js | 侧边栏增加一个全局播放控制面板 |
+| rightClickTabToClose.ac.js  | 右击关闭标签页                 |
