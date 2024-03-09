@@ -59,9 +59,9 @@
             arguments[0].classList.contains("tabbar-wrapper")
         ) {
             bindEvent(arguments[0].querySelector('#tabs-container .tab-strip'));
-            if (arguments[0].querySelector('#tabs-subcontainer .tab-strip')) {
-                bindEvent(arguments[0].querySelector('#tabs-subcontainer .tab-strip'));
-            }
+        } else if (arguments[0].tagName === "DIV" &&
+            arguments[0].id === "tabs-subcontainer") {
+            bindEvent(arguments[0].querySelector('.tab-strip'));
         }
         return appendChild.apply(this, arguments);
     };
