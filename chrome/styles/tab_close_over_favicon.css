@@ -1,11 +1,22 @@
 /* Reposition Close Tab Button to favicon*/
-.tab .title {margin-right: 6px;}
+.tab .title {
+	margin-right: 6px;
+}
+
 .tab .close {
 	position: absolute;
-	opacity:0;
+	opacity: 0;
 }
+
 .tab:hover .close {
-	opacity:1;
+	opacity: 1;
 	transition: opacity .2s;
 }
-.tab:hover .favicon{opacity:0}
+
+.tab:hover .favicon {
+	opacity: 0
+}
+
+.tab:hover .favicon:not(:has(~.close)) {
+	opacity: 1;
+}
