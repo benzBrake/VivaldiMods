@@ -9,11 +9,6 @@
 // @note            20240309 支持关闭标签分组，修复不兼容关闭最后一个标签页不关闭窗口
 // ==/UserScript==
 (function closeTabs(tabContainer, tabSubContainer) {
-    async function getTabById(id) {
-        let tabs = await chrome.tabs.query({ currentWindow: true });
-        let [tab] = tabs.filter((tab) => tab.id === id) || [null];
-        return tab;
-    }
     // 绑定事件
     function bindEvent(tabContainer) {
         tabContainer.addEventListener("contextmenu", async (e) => {
@@ -30,7 +25,6 @@
                     let homePage = await vivaldi.prefs.get('vivaldi.homepage');
                     let tabs = await chrome.tabs.query({ currentWindow: true });
                     let isLastTabEl = tab.closest('.tab-strip').querySelectorAll(':scope>span').length === 1; // 是否为最后一个 Tab
-                    console.log(tab.closest('.tab-strip').children.length);
                     if (keepWindowOpenAfterLastTabClosed && isLastTabEl) {
                         // 创建新标签页，并删除此标签页以外的标签页，包括标签栈
                         const lastTab = await chrome.tabs.create({ url: homePage });
