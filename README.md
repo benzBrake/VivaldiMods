@@ -4,7 +4,7 @@ Vivaldi 自定义内容收藏夹
 
 ## userChrome.js
 
-Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.as.js`。我出于私心命名为`userChrome.js`了
+Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.ac.js`。我出于私心命名为`userChrome.js`了
 
 ### 安装方法
 
@@ -17,4 +17,4 @@ Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.as.js`。我出于私�
 
 ### 为什么脚本后缀名为 .ac.js
 
-与 .us.js 和 userscript 区分
+与 .uc.js 和 userscript 区分
