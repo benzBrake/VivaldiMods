@@ -29,14 +29,14 @@
                     let currentId = tab.id.replace(/^tab-/g, "");
                     let homePage = await vivaldi.prefs.get('vivaldi.homepage');
                     let tabs = await chrome.tabs.query({ currentWindow: true });
-                    let isLastTabEl = tab.parentNode.children.length === 1; // 是否为最后一个 Tab 
+                    let isLastTabEl = tab.closest('.tab-strip').querySelectorAll(':scope>span').length === 1; // 是否为最后一个 Tab
+                    console.log(tab.closest('.tab-strip').children.length);
                     if (keepWindowOpenAfterLastTabClosed && isLastTabEl) {
                         // 创建新标签页，并删除此标签页以外的标签页，包括标签栈
                         const lastTab = await chrome.tabs.create({ url: homePage });
                         await chrome.tabs.remove(tabs.filter(t => t.id !== lastTab.id).map(t => t.id));
                     } else {
                         if (tab.parentNode.classList.contains("is-substack")) {
-                            
                             tabs = tabs.filter(t => {
                                 return JSON.parse(t.vivExtData).group == currentId;
                             });
