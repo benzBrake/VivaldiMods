@@ -3,33 +3,31 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 6.2
-// @version         0.0.3
+// @version         0.0.4
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20240412 Promise 化改造
 // @note            20240308 修改载入顺序
 // @note            20231019 fix: 重复载入脚本
 // ==/UserScript==
-(function () {
+(async function () {
     if (window.userChrome_js) return;
-    
+
     const MODS_DIRECTORY_NAME = 'chrome';
     const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
-    
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
-        init() {
-            chrome.runtime.getPackageDirectoryEntry(e => {
-                e.createReader().readEntries(e => {
-                    e.forEach(e => {
-                        if (e.isDirectory && MODS_DIRECTORY_NAME === e.name) {
-                            this.listMods(e);
-                            return;
-                        }
-                    });
-                });
-            });
+        async init() {
+            const directory = await getPackageDirectoryEntryAsync();
+            const entries = await readEntriesAsync(directory);
+            for (const e of entries) {
+                if (e.isDirectory && e.name === "chrome") {
+                    await this.listMods(e);
+                }
+            }
             setTimeout(function wait() {
                 const browser = document.querySelector('browser');
                 if (typeof browser !== "undefined") {
@@ -39,17 +37,18 @@
                 }
             }, 300);
         },
-        listMods(directory) {
+        async listMods(directory) {
             console.log("getMods: " + directory.fullPath.replace('/crxfs/', ''));
-            directory.createReader().readEntries(e => {
-                e.forEach(mod => {
-                    if (mod.isDirectory) {
-                        this.listMods(mod)
-                    } else {
-                        this.addMod(mod);
-                    }
-                });
-            });
+
+            const entries = await readEntriesAsync(directory);
+
+            for (const mod of entries) {
+                if (mod.isDirectory) {
+                    await this.listMods(mod);
+                } else {
+                    await this.addMod(mod);
+                }
+            }
         },
         addMod(mod) {
             var modPath = mod.fullPath.replace('/crxfs/', '');
@@ -88,6 +87,32 @@
             }
         }
     }
+
+    function getPackageDirectoryEntryAsync() {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.getPackageDirectoryEntry((entry) => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve(entry);
+                }
+            });
+        });
+    }
+
+    function readEntriesAsync(directory) {
+        return new Promise((resolve, reject) => {
+            const reader = directory.createReader();
+            reader.readEntries((entries) => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve(entries);
+                }
+            });
+        });
+    }
+
 
     function injectStyle(file) {
         console.log("Injecting style: " + file.replace(MODS_DIRECTORY_NAME + '/', ''));
