@@ -1,0 +1,10 @@
+.bookmark-bar>.observer>button {
+	transition: all cubic-bezier(0.075, 0.82, 0.165, 1) .3s;
+	>span.title {
+		filter: blur(4px);
+	}
+
+	&:hover > span.title {
+		filter: blur(0px);
+	}
+}
