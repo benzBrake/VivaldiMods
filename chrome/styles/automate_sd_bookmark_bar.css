@@ -1,6 +1,7 @@
 /* 
  * Automate SD Bookmarks Bar
  * @homepageURL https://forum.vivaldi.net/topic/76143/autohide-bookmarks-bar-everywhere-except-inside-speed-dial
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
  */
  #browser:not(:has(.startpage)) .bookmark-bar:not(:hover):not(:focus-within) {max-height: 0; overflow: hidden; border:0; z-index:1;}
  #browser.bookmark-bar-top:has(.startpage) .bookmark-bar, .bookmark-bar-top .bookmark-bar:is(:hover, :focus-within) {margin-bottom: -29px; z-index:1;} /* float top BB */

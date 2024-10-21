@@ -1,3 +1,7 @@
+/* 
+ * Remove space of the above tab bar
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
+ */
 #app {
     --tab-min-height: 30px;
 }

@@ -1,3 +1,7 @@
+/* 
+ * Centered bookmark items in the bookmarks bar
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
+ */
 .bookmark-bar .observer {
     justify-content: center;
 }
