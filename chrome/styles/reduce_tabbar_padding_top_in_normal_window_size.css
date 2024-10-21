@@ -6,33 +6,28 @@
     --tab-min-height: 30px;
 }
 
-.tabs-top#browser.win {
-    &:not(.fullscreen, .disable-titlebar) #header {
+#browser.tabs-top.normal {
+    &.address-top:not(.fullscreen, .disable-titlebar) #header {
         min-height: calc(var(--tab-min-height) / var(--uiZoomLevel));
     }
     & .window-buttongroup {
-        height: calc(var(--tab-min-height) / var(--uiZoomLevel) + 2 * var(--tab-block-margin));
+        height: calc(var(--tab-min-height) / var(--uiZoomLevel) + 2 * var(--tab-block-margin, 0px));
 
         &>button:not(.vivaldi) {
             height: 100% !important;
         }
     }
-}
+    &:is(.win, .linux) #tabs-tabbar-container.top {
+        padding-top: var(--tab-block-margin, 0px);
+    }
 
-.win.normal #tabs-tabbar-container.top,
-.linux.normal #tabs-tabbar-container.top {
-    padding-top: var(--tab-block-margin, 0px);
+    .vivaldi {
+        margin: 0;
+        height: calc(var(--tab-min-height) / var(--uiZoomLevel));
+    }
 }
 
 .tab-position .tab .tab-header {
-    flex: 0 0 calc(var(--tab-min-height) / var(--uiZoomLevel));
+    flex: 0 0 calc(var(--tab-min-height) / var(--uiZoomLevel)) !important;
 }
 
-.tabs-top#browser.win .window-buttongroup button:not(.vivaldi) {
-    height: calc(var(--tab-min-height) / var(--uiZoomLevel));
-}
-
-.vivaldi {
-    margin: 0;
-    height: calc(var(--tab-min-height) / var(--uiZoomLevel));
-}
