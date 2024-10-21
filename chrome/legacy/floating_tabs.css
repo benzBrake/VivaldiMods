@@ -90,3 +90,7 @@
 		cursor: pointer;
 	}
 }
+
+.tabs-at-edge #tabs-tabbar-container.top, .native:not(.stacks-dotted) #tabs-tabbar-container.top {
+	padding-top: var(--tab-block-margin);
+}
