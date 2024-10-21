@@ -5,8 +5,8 @@
 
 :root {
 	--tab-border-radius: 4px;
-	--tab-block-margin: 3px;
-	--tab-inline-margin: 5px;
+	--tab-block-margin: 4px;
+	--tab-inline-margin: 4px;
 	--tab-post-spacer-width: 15px;
 	--tab-highlight-color: #c00;
 	--tab-drop-shadow: 3px 3px 5px -1px rgba(0,0,0,.3);
@@ -16,14 +16,14 @@
 
 /* -- Tabs -- */
 #tabs-tabbar-container.top {
-	margin-bottom: var(--tab-inline-margin);
+	margin-bottom: var(--tab-block-margin);
 	border-width: 0;
 	box-shadow: none !important;
 
 	padding-right: var(--tab-post-spacer-width);
 
 	.tab-strip > span + span .tab:not(.pinned) {
-		margin-left: var(--tab-block-margin);
+		margin-left: var(--tab-inline-margin);
 	}
 }
 
