@@ -1,0 +1,92 @@
+/* VivaldiMods tweaks *******************************************************************/
+/* Github: https://github.com/benzBrake/VivaldiMods *************************************/
+/* Fx Floating Tabs, collect from: https://github.com/saschadiercks/vivaldi-ui-mods *****/
+/****************************************************************************************/
+
+:root {
+	--tab-border-radius: 4px;
+	--tab-block-margin: 3px;
+	--tab-inline-margin: 5px;
+	--tab-post-spacer-width: 15px;
+	--tab-highlight-color: #c00;
+	--tab-drop-shadow: 3px 3px 5px -1px rgba(0,0,0,.3);
+	--tab-animation-speed: .3s;
+	--tab-mainbar-height: 45px;
+}
+
+/* -- Tabs -- */
+#tabs-tabbar-container.top {
+	margin-bottom: var(--tab-inline-margin);
+	border-width: 0;
+	box-shadow: none !important;
+
+	padding-right: var(--tab-post-spacer-width);
+
+	.tab-strip > span + span .tab:not(.pinned) {
+		margin-left: var(--tab-block-margin);
+	}
+}
+
+.tab-position {
+	.tab {
+		transition: all var(--tab-animation-speed) ease;
+		border-radius: var(--tab-border-radius) !important;
+		* {
+			cursor: pointer;
+		}
+
+		/* overwrite potential chrome mods */
+		&::after,
+		&::before {
+			display: none;
+		}
+
+		.close {
+			background-color: transparent;
+			border-radius: 99rem;
+		}
+
+		&.active,
+		&:hover {
+			box-shadow: var(--tab-drop-shadow);
+		}
+	}
+}
+
+/* -- tabs horizontal scrolling enabled --*/
+.horizontal-scrolling {
+	&.tab-strip {
+		padding-top: unset !important;
+		margin-top: unset !important;
+	}
+}
+
+/* -- highlight tab with background audio -- */
+.tab.audio-on:not(.active) {
+	transition: all var(--tab-animation-speed) ease;
+	color: var(--colorHighlightBg, --tab-highlight-color);
+	box-shadow: var(--tab-drop-shadow);
+	.tab-header {
+		background-color: var(--colorBg);
+	}
+}
+
+/* -- Main Bar -- */
+.mainbar {
+	& > .toolbar-mainbar {
+		align-items: stretch;
+		height: var(--tab-mainbar-height);
+		padding: var(--tab-inline-margin);
+	}
+}
+
+.toolbar-mainbar .profile-popup {
+	margin-right: var(--tab-post-spacer-width);
+}
+
+/* -- Speed dial -- */
+.dials {
+	.dial *:hover {
+		cursor: pointer;
+	}
+}
