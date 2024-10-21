@@ -1,6 +1,12 @@
+/* VivaldiMods tweaks *******************************************************************/
+/* Github: https://github.com/benzBrake/VivaldiMods *************************************/
+/* Fx Orange App Button *****************************************************************/
+/****************************************************************************************/
+
 #tabs-tabbar-container {
     --menuWidth: 92px;
 }
+
 .vivaldi {
     --menuWidth: 80px;
     background: linear-gradient(rgb(247, 182, 82), rgb(215, 98, 10) 95%) !important;

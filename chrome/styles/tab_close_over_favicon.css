@@ -1,4 +1,7 @@
-/* Reposition Close Tab Button to favicon*/
+/* 
+ * Reposition Close Tab Button to favicon*
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
+ */
 .tab .title {
 	margin-right: 6px;
 }
