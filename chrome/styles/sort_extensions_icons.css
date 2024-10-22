@@ -1,0 +1,16 @@
+/* 
+ * Sort Extensions Icons
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
+ */
+.toolbar-extensions {
+    & > .ExtensionIcon {
+        order: 2;
+        &.ExtensionIcon--Hidden {
+            order: 1;
+        }
+    }
+
+    & > .ExtensionToggleIcon {
+        order: 3;
+    }
+}

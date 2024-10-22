@@ -4,10 +4,11 @@
 
 ## 文件说明
 
-| 文件名                                              | 说明                               |
-| --------------------------------------------------- | ---------------------------------- |
-| automate_sd_bookmark_bar.css                        | 在非新标签页隐藏书签工具栏         |
-| blur_bookmark_bar_items.css                         | 模糊书签工具栏文字，鼠标经过时显示 |
-| centered_bookmark_bar.css                           | 居中显示书签工具栏                 |
-| remove_tabbar_padding_top_in_normal_window_size.css | 移除非最大化窗口标签栏上边的空间   |
-| tab_close_over_favicon.css                          | 标签关闭按钮显示在 Favicon 上方    |
+| 文件名                                              | 说明                                         |
+| --------------------------------------------------- | -------------------------------------------- |
+| automate_sd_bookmark_bar.css                        | 在非新标签页隐藏书签工具栏                   |
+| blur_bookmark_bar_items.css                         | 模糊书签工具栏文字，鼠标经过时显示           |
+| centered_bookmark_bar.css                           | 居中显示书签工具栏                           |
+| remove_tabbar_padding_top_in_normal_window_size.css | 移除非最大化窗口标签栏上边的空间             |
+| sort_extensions_icons.css                           | 调整扩展图标顺序，隐藏的在前，一直显示的在后 |
+| tab_close_over_favicon.css                          | 标签关闭按钮显示在 Favicon 上方              |
