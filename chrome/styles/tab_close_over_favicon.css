@@ -2,24 +2,32 @@
  * Reposition Close Tab Button to favicon*
  * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
  */
-.tab .title {
-	margin-right: 6px;
-}
+.tab-position {
+	&>.tab {
+		& .title {
+			margin-right: 6px;
+		}
 
-.tab .close {
-	position: absolute;
-	opacity: 0;
-}
+		& .close {
+			position: absolute;
+			opacity: 0;
+			background-color: var(--colorBgDarker);
+			z-index: 99;
+		}
 
-.tab:hover .close {
-	opacity: 1;
-	transition: opacity .2s;
-}
+		&:hover {
+			& .close {
+				opacity: 1;
+				transition: opacity .2s;
+			}
 
-.tab:hover .favicon {
-	opacity: 0
-}
+			& .favicon {
+				opacity: 0;
 
-.tab:hover .favicon:not(:has(~.close)) {
-	opacity: 1;
+				&:not(:has(~.close)) {
+					opacity: 1;
+				}
+			}
+		}
+	}
 }
