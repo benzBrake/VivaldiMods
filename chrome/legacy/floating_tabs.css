@@ -9,21 +9,70 @@
 	--tab-inline-margin: 4px;
 	--tab-post-spacer-width: 15px;
 	--tab-highlight-color: #c00;
-	--tab-drop-shadow: 3px 3px 5px -1px rgba(0,0,0,.3);
+	--tab-drop-shadow: 3px 3px 5px -1px rgba(0, 0, 0, .3);
 	--tab-animation-speed: .3s;
 	--tab-mainbar-height: 45px;
 }
 
 /* -- Tabs -- */
-#tabs-tabbar-container.top {
-	margin-bottom: var(--tab-block-margin);
-	border-width: 0;
-	box-shadow: none !important;
+#tabs-tabbar-container {
+	&.top {
+		margin-bottom: var(--tab-block-margin);
+		border-width: 0;
+		box-shadow: none !important;
 
-	padding-right: var(--tab-post-spacer-width);
+		padding-right: var(--tab-post-spacer-width);
 
-	.tab-strip > span + span .tab:not(.pinned) {
+		.tab-strip>span+span .tab:not(.pinned) {
+			margin-left: var(--tab-inline-margin);
+		}
+	}
+
+	&.bottom {
+		margin-top: var(--tab-block-margin);
+		border-width: 0;
+		box-shadow: none !important;
+
+		.tab-strip>span+span .tab:not(.pinned) {
+			margin-right: var(--tab-inline-margin);
+		}
+	}
+
+	&:is(.left, .right) {
+		padding-inline: var(--tab-inline-margin);
+
+		.tab-strip>span+span .tab:not(.pinned) {
+			margin-top: var(--tab-inline-margin);
+		}
+
+		.newtab {
+			margin-top: var(--tab-block-margin);
+		}
+		.button-toolbar.toggle-trash{
+			margin-bottom: var(--tab-block-margin);
+		}
+	}
+
+
+	.newtab>button {
 		margin-left: var(--tab-inline-margin);
+		transition: all var(--tab-animation-speed) ease;
+
+		&:hover {
+			background-color: var(--colorBg);
+			color: var(--colorFg);
+			box-shadow: var(--tab-drop-shadow);
+		}
+	}
+
+	.button-toolbar.toggle-trash>button {
+		transition: all var(--tab-animation-speed) ease;
+
+		&:hover {
+			background-color: var(--colorBg);
+			color: var(--colorFg);
+			box-shadow: var(--tab-drop-shadow);
+		}
 	}
 }
 
@@ -31,6 +80,7 @@
 	.tab {
 		transition: all var(--tab-animation-speed) ease;
 		border-radius: var(--tab-border-radius) !important;
+
 		* {
 			cursor: pointer;
 		}
@@ -66,6 +116,7 @@
 	transition: all var(--tab-animation-speed) ease;
 	color: var(--colorHighlightBg, --tab-highlight-color);
 	box-shadow: var(--tab-drop-shadow);
+
 	.tab-header {
 		background-color: var(--colorBg);
 	}
@@ -73,7 +124,7 @@
 
 /* -- Main Bar -- */
 .mainbar {
-	& > .toolbar-mainbar {
+	&>.toolbar-mainbar {
 		align-items: stretch;
 		height: var(--tab-mainbar-height);
 		padding: var(--tab-inline-margin);
@@ -91,6 +142,7 @@
 	}
 }
 
-.tabs-at-edge #tabs-tabbar-container.top, .native:not(.stacks-dotted) #tabs-tabbar-container.top {
+.tabs-at-edge #tabs-tabbar-container.top,
+.native:not(.stacks-dotted) #tabs-tabbar-container.top {
 	padding-top: var(--tab-block-margin);
 }
