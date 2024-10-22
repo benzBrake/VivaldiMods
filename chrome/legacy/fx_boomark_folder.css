@@ -1,0 +1,20 @@
+.bookmarkbarItem.folder {
+    &>svg.folder-icon {
+        display: none;
+    }
+
+    &::after {
+        order: 1;
+        content: "";
+        display: flex;
+        width: 16px;
+        height: 16px;
+        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im0xMy45OTUgMTQtMTAuOTkgMEEyLjAwNyAyLjAwNyAwIDAgMSAxIDExLjk5NWwwLTguOTlDMSAxLjg5OSAxLjg5OSAxIDMuMDA1IDFsMi45NTggMGEyLjAxIDIuMDEgMCAwIDEgMS40Ny42NDFMOC42OTMgM2w1LjMwMiAwQzE1LjEwMSAzIDE2IDMuODk5IDE2IDUuMDA1bDAgNi45OUEyLjAwNyAyLjAwNyAwIDAgMSAxMy45OTUgMTR6TTIuODUgMi4yNWwtLjYuNiAwIDkuMy42LjYgMTEuMyAwIC42LS42IDAtNy4zLS42LS42LTUuNzMgMC0uNDU4LS4yLTEuNDQ1LTEuNTU5YS43NTguNzU4IDAgMCAwLS41NTQtLjI0MWwtMy4xMTMgMHoiLz48L3N2Zz4=);
+        background-repeat: no-repeat;
+        background-size: 16px;
+    }
+
+    &>* {
+        order: 2;
+    }
+}

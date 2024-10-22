@@ -1,0 +1,129 @@
+/* VivaldiMods tweaks *******************************************************************/
+/* Github: https://github.com/benzBrake/VivaldiMods *************************************/
+/* Copyright ****************************************************************************/
+/* SVG Source Code Form is subject to the terms of the Mozilla Public *******************/
+/*   - License, v. 2.0. If a copy of the MPL was not distributed with this **************/
+/*  - file, You can obtain one at http://mozilla.org/MPL/2.0/ ***************************/
+/****************************************************************************************/
+:root {
+    --hollow-star-icon: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik00LjE4NSAxNS40OTljLS4zMzYgMC0uNjcxLS4xMDQtLjk1Ny0uMzEzYTEuNjIgMS42MiAwIDAgMS0uNjIxLTEuNzJsLjg2LTMuMzc1LTIuNjgtMi4yMjZBMS42MTggMS42MTggMCAwIDEgLjI3OSA2LjExYTEuNjIxIDEuNjIxIDAgMCAxIDEuNDQ0LTEuMTIybDMuNDc1LS4yMjUgMS4yODgtMy4yMzdDNi43MzUuOTAzIDcuMzI5LjUgOCAuNXMxLjI2NS40MDMgMS41MTQgMS4wMjZsMS4yODggMy4yMzcgMy40NzUuMjI1YTEuNjIgMS42MiAwIDAgMSAxLjQ0NCAxLjEyMiAxLjYyIDEuNjIgMCAwIDEtLjUwOSAxLjc1N2wtMi42OCAyLjIyNS44NiAzLjM3NWExLjYyIDEuNjIgMCAwIDEtLjYyMSAxLjcyIDEuNjE4IDEuNjE4IDAgMCAxLTEuODI4LjA1OUw4IDEzLjM4NWwtMi45NDQgMS44NjFhMS42MyAxLjYzIDAgMCAxLS44NzEuMjUzek04IDEuNzVhLjM2NS4zNjUgMCAwIDAtLjM1Mi4yMzlMNi4yMTQgNS41OTJsLS41NDEuMzkzLTMuODcuMjUxYS4zNjYuMzY2IDAgMCAwLS4zMzYuMjYxLjM2NC4zNjQgMCAwIDAgLjExOS40MDdMNC41NyA5LjM4M2wuMjA2LjYzNS0uOTU4IDMuNzU4YS4zNjQuMzY0IDAgMCAwIC4xNDUuMzk5Yy4wNjMuMDQ3LjIzLjEzOS40MjYuMDE0bDMuMjc4LTIuMDcxLjY2OCAwIDMuMjc4IDIuMDcxYS4zNjUuMzY1IDAgMCAwIC40MjYtLjAxNC4zNjcuMzY3IDAgMCAwIC4xNDMtLjRsLS45NTgtMy43NTguMjA2LS42MzUgMi45ODQtMi40NzhhLjM2NC4zNjQgMCAwIDAgLjExOS0uNDA4LjM2Ny4zNjcgMCAwIDAtLjMzNi0uMjYxbC0zLjg2OS0uMjUxLS41NDEtLjM5My0xLjQzNS0zLjYwM0EuMzY3LjM2NyAwIDAgMCA4IDEuNzV6Ii8+PC9zdmc+)
+}
+
+:is(.sync-and-trash-container, .BookmarkButton-Button, .button-toolbar.newtab) {
+    button {
+        &::before {
+            content: "";
+            display: flex;
+            width: 16px;
+            height: 16px;
+            background-repeat: no-repeat;
+            background-size: 16px;
+        }
+
+        &>.button-icon {
+            display: none;
+        }
+    }
+}
+
+.sync-and-trash-container button {
+    &::before {
+        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im04LjM1MiAxMC45OTkgNS40NjYtNS40NjVhLjYyMy42MjMgMCAwIDAtLjAwMS0uODg0LjYyOC42MjggMCAwIDAtLjg4NSAwTDcuOTk4IDkuNTg1bC00LjkzLTQuOTM0YS42MjYuNjI2IDAgMCAwLS44ODUuODg1TDcuNjQ4IDExbC43MDQtLjAwMXoiLz48L3N2Zz4K);
+    }
+
+    &.bottom {
+        button {
+            transform: rotate(180deg);
+        }
+    }
+}
+
+/** Bookmark in Url */
+.BookmarkButton-Button>button {
+    &::before {
+        background-image: url(--hollow-star-icon);
+    }
+
+    &.button-on::before {
+        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik0zLjQ3NSA5LjgyNC42MTUgNy40NDlBMS4yMDcgMS4yMDcgMCAwIDEgLjIzNyA2LjE0YTEuMjA1IDEuMjA1IDAgMCAxIDEuMDc0LS44MzVsMy42OTctLjIzOS41MDEtLjM3NSAxLjM2NC0zLjQyN0M3LjA1OS44IDcuNTAxLjUgOCAuNXMuOTQxLjMgMS4xMjcuNzYzbDAgLjAwMSAxLjM2NCAzLjQyNy41MDEuMzc1IDMuNjk3LjIzOWMuNDk4LjAzMi45Mi4zNiAxLjA3NC44MzUuMTU1LjQ3Ni4wMDYuOTktLjM3OCAxLjMwOUwxMi41MyA5LjgybC0uMTguNTkyLjkxIDMuNTc1Yy4xMjMuNDg1LS4wNTkuOTg2LS40NjMgMS4yNzlhMS4yMTMgMS4yMTMgMCAwIDEtMS4zNi4wNDVMOC4zMSAxMy4zMzRsLS42MjEgMC0zLjEyNiAxLjk3N2MtLjQyNi4yNjYtLjk2LjI0Ny0xLjM2MS0uMDQ1YTEuMjA1IDEuMjA1IDAgMCAxLS40NjMtMS4yNzlsLjkwOC0zLjU2Ni0uMTcyLS41OTd6Ii8+PC9zdmc+);
+    }
+}
+
+/** New Tab */
+.button-toolbar.newtab {
+    button {
+        &::before {
+            background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0iY3VycmVudENvbG9yIj4KICA8cGF0aCBkPSJNNyA5Ljc1IDcgMTRhLjYyNS42MjUgMCAwIDAgMS4yNSAwbDAtNC4yNS41LS41IDQuMjUgMEEuNjI1LjYyNSAwIDAgMCAxMyA4TDguNzUgOGwtLjUtLjUgMC00LjI1YS42MjUuNjI1IDAgMCAwLTEuMjUgMEw3IDcuNWwtLjUuNS00LjI1IDBhLjYyNS42MjUgMCAwIDAgMCAxLjI1bDQuMTM3IDB6Ii8+PC9zdmc+)
+        }
+    }
+}
+
+/** Profile Icon */
+button[name="AccountButton"]:has(>img[src="/resources/contact-person.png"]) {
+    &::before {
+        content: "";
+        display: flex;
+        width: 20px;
+        height: 20px;
+        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik04LjUgMTMuMjVjMS45MTIgMCAzLjU3MS0xLjAzOCA0LjQ4OS0yLjU2OUExLjk5MyAxLjk5MyAwIDAgMCAxMS40OTUgMTBsLTUuOTkgMGMtLjU5NiAwLTEuMTI2LjI2Ny0xLjQ5NC42ODEuOTE4IDEuNTMxIDIuNTc3IDIuNTY5IDQuNDg5IDIuNTY5eiIvPgogIDxwYXRoIGQ9Ik04LjUgNGEyLjUgMi41IDAgMSAwIDAgNSAyLjUgMi41IDAgMCAwIDAtNXoiLz4KICA8cGF0aCBkPSJNOC41IDIuMjVjMy40NDYgMCA2LjI1IDIuODA0IDYuMjUgNi4yNXMtMi44MDQgNi4yNS02LjI1IDYuMjUtNi4yNS0yLjgwNC02LjI1LTYuMjVTNS4wNTQgMi4yNSA4LjUgMi4yNU04LjUgMWE3LjUgNy41IDAgMSAwIDAgMTUgNy41IDcuNSAwIDAgMCAwLTE1eiIvPjwvc3ZnPgo=);
+        background-repeat: no-repeat;
+        background-size: 20px;
+        transform: translateY(-1px);
+    }
+
+    &>img {
+        display: none;
+    }
+}
+
+/** Other */
+button {
+    &:is([name="Extensions"], [name$="Back"], [name="Forward"], [name="MailForward"], [name="Reload"], [name="Home"], [name="PanelToggle"], [name="PanelBookmarks"]) {
+        &::before {
+            content: "";
+            display: flex;
+            width: 16px;
+            height: 16px;
+            background-image: var(--button-image);
+            background-repeat: no-repeat;
+            background-size: 16px;
+        }
+
+        &>.button-icon {
+            display: none;
+        }
+
+        &:disabled::before {
+            opacity: .5;
+        }
+    }
+
+    &[name="Extensions"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im0xMy4zNzUgMTYtOS43NSAwQTEuNjI2IDEuNjI2IDAgMCAxIDIgMTQuMzc1TDIgMTEuNWEuNzUuNzUgMCAwIDEgLjc1LS43NWwxLjc1IDBjLjY4OSAwIDEuMjUtLjU2MSAxLjI1LTEuMjVTNS4xODkgOC4yNSA0LjUgOC4yNWwtMS43NSAwQS43NS43NSAwIDAgMSAyIDcuNWwwLTEuODc1QzIgNC43MjggMi43MjggNCAzLjYyNSA0TDYgNGwwLTEuMzUyQzYgMS4zNDEgNi45MzguMTQ3IDguMjM4LjAxNEEyLjUwMiAyLjUwMiAwIDAgMSAxMSAyLjVMMTEgNGwyLjM3NSAwQzE0LjI3MiA0IDE1IDQuNzI4IDE1IDUuNjI1bDAgOC43NWMwIC44OTctLjcyOCAxLjYyNS0xLjYyNSAxLjYyNXpNMy4yNSAxMmwwIDIuMTUuNi42IDkuMyAwIC42LS42IDAtOC4zLS42LS42LTIuNjUgMGEuNzUuNzUgMCAwIDEtLjc1LS43NWwwLTJjMC0uNjg5LS41NjEtMS4yNS0xLjI1LTEuMjVzLTEuMjUuNTYxLTEuMjUgMS4yNWwwIDJhLjc1Ljc1IDAgMCAxLS43NS43NWwtMi43NSAwLS41LjYgMCAxLjE1IDEuMTAzIDBjMS4zMDggMCAyLjUwMi45MzkgMi42MzQgMi4yNEEyLjUwMyAyLjUwMyAwIDAgMSA0LjUgMTJsLTEuMjUgMHoiLz48L3N2Zz4K);
+    }
+
+    &[name$="Back"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik02LjY5IDIuMjUgMS4yMiA3LjcyYS43NS43NSAwIDAgMCAwIDEuMDZsNS40NyA1LjQ3IDEuMDYtMS4wNjFMMy41NiA5SDE1VjcuNUgzLjU2bDQuMTktNC4xOS0xLjA2LTEuMDZ6Ii8+PC9zdmc+);
+    }
+
+    &[name="Forward"],
+    &[name="MailForward"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik0xMi40NCA5SDFWNy41aDExLjQ0TDguMjUgMy4zMWwxLjA2LTEuMDYgNS40NyA1LjQ3YS43NS43NSAwIDAgMSAwIDEuMDZsLTUuNDcgNS40Ny0xLjA2LTEuMDYxTDEyLjQ0IDl6Ii8+PC9zdmc+);
+    }
+
+    &[name="Reload"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik0xMC43MDcgNiAxNC43IDZsLjMtLjMgMC0zLjk5M2EuNS41IDAgMCAwLS44NTQtLjM1NGwtMS40NTkgMS40NTlBNi45NSA2Ljk1IDAgMCAwIDggMUM0LjE0MSAxIDEgNC4xNDEgMSA4czMuMTQxIDcgNyA3YTYuOTcgNi45NyAwIDAgMCA2Ljk2OC02LjMyMi42MjYuNjI2IDAgMCAwLS41NjItLjY4Mi42MzUuNjM1IDAgMCAwLS42ODIuNTYyQTUuNzI2IDUuNzI2IDAgMCAxIDggMTMuNzVjLTMuMTcxIDAtNS43NS0yLjU3OS01Ljc1LTUuNzVTNC44MjkgMi4yNSA4IDIuMjVhNS43MSA1LjcxIDAgMCAxIDMuODA1IDEuNDQ1bC0xLjQ1MSAxLjQ1MWEuNS41IDAgMCAwIC4zNTMuODU0eiIvPjwvc3ZnPg==)
+    }
+
+    &[name="Home"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik0xNC44MTcgNy41MDcgOC44NTIgMS41NDJhMS45MTggMS45MTggMCAwIDAtMi43MDMgMEwuMTgzIDcuNTA3QS42MTguNjE4IDAgMCAwIDEgOC40MzZMMSAxNGEyIDIgMCAwIDAgMiAybDkgMGEyIDIgMCAwIDAgMi0ybDAtNS41NjRhLjYyLjYyIDAgMCAwIC4zNzUuMTM5LjYyNi42MjYgMCAwIDAgLjQ0Mi0xLjA2OHpNOC43NSAxNC43NWwtMi41IDAgMC00IC41LS41IDEuNSAwIC41LjUgMCA0em00LS41ODEtLjYuNTgxLTIuMTUgMEwxMCAxMWEyIDIgMCAwIDAtMi0yTDcgOWEyIDIgMCAwIDAtMiAybDAgMy43NS0yLjE1IDAtLjYtLjU4MS0uMDAxLTYuOTYgNC43ODMtNC43ODNhLjY2My42NjMgMCAwIDEgLjkzNiAwTDEyLjc1IDcuMjFsMCA2Ljk1OXoiLz48L3N2Zz4=)
+    }
+
+    &[name="PanelToggle"] {
+        --button-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2IiBmaWxsPSJjdXJyZW50Q29sb3IiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZD0iTTE2IDEyLjI1IDE2IDRhMiAyIDAgMCAwLTItMkwyIDJhMiAyIDAgMCAwLTIgMmwwIDguMjVhMiAyIDAgMCAwIDIgMmwxMiAwYTIgMiAwIDAgMCAyLTJ6bS0xNC43NS4xNSAwLTguNTUuNi0uNiA0LjkgMCAwIDkuNzUtNC45IDAtLjYtLjZ6TTggMTNsNi4xNSAwIC42LS42IDAtOC41NS0uNi0uNi02LjE1IDBMOCAxM3oiLz4KICA8cGF0aCBkPSJNNS41IDEwLjVBLjUuNSAwIDAgMCA1IDEwbC0yIDBhLjUuNSAwIDAgMCAwIDFsMiAwYS41LjUgMCAwIDAgLjUtLjV6Ii8+CiAgPHBhdGggZD0iTTUuNSA4YS41LjUgMCAwIDAtLjUtLjVsLTIgMGEuNS41IDAgMCAwIDAgMWwyIDBhLjUuNSAwIDAgMCAuNS0uNXoiLz4KICA8cGF0aCBkPSJNNS41IDUuNUEuNS41IDAgMCAwIDUgNUwzIDVhLjUuNSAwIDAgMCAwIDFsMiAwYS41LjUgMCAwIDAgLjUtLjV6Ii8+PC9zdmc+)
+    }
+
+    &[name="PanelBookmarks"] {
+        --button-image: var(--hollow-star-icon)
+    }
+}
