@@ -41,7 +41,7 @@
 /** Bookmark in Url */
 .BookmarkButton-Button>button {
     &::before {
-        background-image: url(--hollow-star-icon);
+        background-image: var(--hollow-star-icon);
     }
 
     &.button-on::before {
