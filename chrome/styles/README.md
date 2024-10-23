@@ -13,3 +13,4 @@
 | remove_tabbar_padding_top_in_normal_window_size.css | 移除非最大化窗口标签栏上边的空间             |
 | sort_extensions_icons.css                           | 调整扩展图标顺序，隐藏的在前，一直显示的在后 |
 | tab_close_over_favicon.css                          | 标签关闭按钮显示在 Favicon 上方              |
+| topmenu_in_tabsbar.css                              | 在标签栏右侧显示横向菜单栏（如有）           |
