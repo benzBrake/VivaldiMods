@@ -19,16 +19,17 @@
     const MODS_STYLE_EXTENSION = '.css';
     const MODS_SKIP_LIST = ['userChrome.js'];
 
-    // 将工具函数绑定到全局对象
-    window.$ = function (selector, context) {
-        return new $(selector, context);
-    };
-
     function $ (selector, context) {
         context = context || document; // 默认上下文为 document
-
+        this.elements = [];
         if (typeof selector === 'string') {
-            this.elements = context.querySelectorAll(selector);
+            if (selector === "document") {
+                this.elements = [document];
+            } else {
+                this.elements = [...context.querySelectorAll(selector)];
+            }
+        } else if (selector instanceof Document) {
+            this.elements = [selector];
         } else if (selector instanceof HTMLElement) {
             this.elements = [selector];
         }
@@ -50,6 +51,35 @@
         });
         this.elements = results;
         return this;
+    };
+
+    // 获取符合选择器的最近父元素
+    $.prototype.closest = function (selector) {
+        const closestElements = [];
+        this.each(function () {
+            let current = this;
+            while (current) {
+                if (current.matches(selector)) {
+                    closestElements.push(current);
+                    break;
+                }
+                current = current.parentElement; // 向上遍历父元素
+            }
+        });
+        let obj = new $();
+        obj.elements = closestElements;
+        return obj;
+    };
+
+    // 检查每个选中元素是否具有指定的类
+    $.prototype.hasClass = function (className) {
+        let hasClass = false;
+        this.each(function () {
+            if (this.classList.contains(className)) {
+                hasClass = true;
+            }
+        });
+        return hasClass;
     };
 
     // 添加 class 操作
@@ -95,6 +125,23 @@
         return this.each(function () {
             this.dispatchEvent(event);
         });
+    };
+
+    // 获取元素
+    $.prototype.get = function (index) {
+        return this.elements[index];
+    };
+
+    // 增加 length 属性
+    Object.defineProperty($.prototype, 'length', {
+        get: function () {
+            return this.elements.length;
+        }
+    });
+
+    // 将工具函数绑定到全局对象
+    window.$ = function (selector, context) {
+        return new $(selector, context);
     };
 
     window.userChrome_js = {
