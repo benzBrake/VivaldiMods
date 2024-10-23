@@ -3,8 +3,11 @@
  * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
  */
 .menubar.horizontal {
-    display: none;
     transition-delay: 0.2s;
+
+    &:not(:hover, :focus, :active, :focus-within) {
+        display: none;
+    }
 
     &:has(button[roles="menuitem"]:is(.highlighted, .focused)) {
         display: flex;
