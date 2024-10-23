@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 6.2
-// @version         0.0.4
+// @version         0.0.5
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20241023 增加 $ 函数
 // @note            20240412 Promise 化改造
 // @note            20240308 修改载入顺序
 // @note            20231019 fix: 重复载入脚本
@@ -113,7 +114,6 @@
         });
     }
 
-
     function injectStyle(file) {
         console.log("Injecting style: " + file.replace(MODS_DIRECTORY_NAME + '/', ''));
         var link = document.createElement('link');
@@ -122,6 +122,66 @@
         document.getElementsByTagName('head')[0].appendChild(link);
         return link;
     }
+
+    function $(selector, context) {
+        context = context || document; // 如果没有上下文，默认使用 document
+
+        // 使用传入的上下文执行选择器查询
+        if (typeof selector === 'string') {
+            this.elements = context.querySelectorAll(selector);
+        } else if (selector instanceof HTMLElement) {
+            this.elements = [selector];
+        }
+    }
+
+    // 遍历每个选中的元素
+    $.prototype.each = function(callback) {
+        this.elements.forEach((el, index) => {
+            callback.call(el, index, el);
+        });
+        return this;
+    };
+
+    // 实现 find 功能，指定在当前元素范围内进行选择
+    $.prototype.find = function(selector) {
+        const results = [];
+        this.each(function() {
+            results.push(...this.querySelectorAll(selector));
+        });
+        this.elements = results;
+        return this;
+    };
+
+    // 添加 class 操作
+    $.prototype.addClass = function(className) {
+        return this.each(function() {
+            this.classList.add(className);
+        });
+    };
+
+    $.prototype.removeClass = function(className) {
+        return this.each(function() {
+            this.classList.remove(className);
+        });
+    };
+
+    $.prototype.toggleClass = function(className) {
+        return this.each(function() {
+            this.classList.toggle(className);
+        });
+    };
+
+    // 添加事件监听
+    $.prototype.on = function(event, handler) {
+        return this.each(function() {
+            this.addEventListener(event, handler);
+        });
+    };
+
+    // 将工具函数绑定到全局对象
+    window.$ = function(selector, context) {
+        return new $(selector, context);
+    };
 
     window.userChrome_js.init();
 })()
