@@ -3,11 +3,12 @@
  * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
  */
 .menubar.horizontal {
-    transform: translateY(-100%);
+    display: none;
     transition-delay: 0.2s;
+
     &:has(button[roles="menuitem"]:is(.highlighted, .focused)) {
-        transform: translateY(0);
+        display: flex;
         transition-delay: 0;
-        transition: transform .2s ease-in-out;
+        transition: all .2s ease-in-out;
     }
 }
