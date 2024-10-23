@@ -1,0 +1,56 @@
+/* 
+ * Show topmenu and tabs bar in one line
+ * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
+ */
+#browser.tabs-top {
+    & #header:has(>.topmenu) {
+        display: flex;
+        flex-direction: row-reverse;
+
+        &>.topmenu {
+            margin-right: 0;
+            align-items: center;
+            height: 100%;
+
+            &>.vivaldi-horizontal-icon,
+            &>.horizontal-menu-pagetitle {
+                display: none;
+            }
+        }
+
+        &>.tabbar-wrapper {
+            flex-grow: 1;
+        }
+
+        #tabs-container {
+            padding-left: var(--tab-inline-margin, 4px);
+        }
+
+        &:not(:has(#tabs-subcontainer)) {
+            padding-right: calc(140px / var(--uiZoomLevel));
+        }
+
+        &:has(#tabs-subcontainer) {
+            & #tabs-container {
+                padding-right: calc(140px / var(--uiZoomLevel));
+            }
+
+            & .topmenu {
+                position: fixed;
+                top: 0;
+                right: calc(140px / var(--uiZoomLevel));
+                height: calc(var(--tab-min-height, 30px) + 2*var(--tab-block-margin, 4px));
+                z-index: 1;
+                background-color: var(--colorTabBar);
+                /* 左侧 透明到背景色渐变 */
+                &::before {
+                    content: "";
+                    display: block;
+                    width: 30px;
+                    height: 100%;
+                    background-image: linear-gradient(to right, transparent, var(--colorTabBar));
+                }
+            }
+        }
+    }
+}
