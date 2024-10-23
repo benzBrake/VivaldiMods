@@ -17,11 +17,90 @@
     const MODS_DIRECTORY_NAME = 'chrome';
     const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
+    const MODS_SKIP_LIST = ['userChrome.js'];
+
+    // 将工具函数绑定到全局对象
+    window.$ = function (selector, context) {
+        return new $(selector, context);
+    };
+
+    function $ (selector, context) {
+        context = context || document; // 默认上下文为 document
+
+        if (typeof selector === 'string') {
+            this.elements = context.querySelectorAll(selector);
+        } else if (selector instanceof HTMLElement) {
+            this.elements = [selector];
+        }
+    }
+
+    // 遍历每个选中的元素
+    $.prototype.each = function (callback) {
+        this.elements.forEach((el, index) => {
+            callback.call(el, index, el);
+        });
+        return this;
+    };
+
+    // 实现 find 功能，指定在当前元素范围内进行选择
+    $.prototype.find = function (selector) {
+        const results = [];
+        this.each(function () {
+            results.push(...this.querySelectorAll(selector));
+        });
+        this.elements = results;
+        return this;
+    };
+
+    // 添加 class 操作
+    $.prototype.addClass = function (className) {
+        return this.each(function () {
+            this.classList.add(className);
+        });
+    };
+
+    $.prototype.removeClass = function (className) {
+        return this.each(function () {
+            this.classList.remove(className);
+        });
+    };
+
+    $.prototype.toggleClass = function (className) {
+        return this.each(function () {
+            this.classList.toggle(className);
+        });
+    };
+
+    // 添加事件监听
+    $.prototype.on = function (event, handler) {
+        return this.each(function () {
+            this.addEventListener(event, handler);
+        });
+    };
+
+    // 移除事件监听
+    $.prototype.off = function (event, handler) {
+        return this.each(function () {
+            this.removeEventListener(event, handler);
+        });
+    };
+
+    // 触发事件并支持参数
+    $.prototype.trigger = function (eventName, detail) {
+        const event = new CustomEvent(eventName, {
+            bubbles: true,
+            cancelable: true,
+            detail: detail // 传递的参数
+        });
+        return this.each(function () {
+            this.dispatchEvent(event);
+        });
+    };
 
     window.userChrome_js = {
         scripts: [],
         styles: [],
-        async init() {
+        async init () {
             const directory = await getPackageDirectoryEntryAsync();
             const entries = await readEntriesAsync(directory);
             for (const e of entries) {
@@ -29,7 +108,7 @@
                     await this.listMods(e);
                 }
             }
-            setTimeout(function wait() {
+            setTimeout(function wait () {
                 const browser = document.querySelector('browser');
                 if (typeof browser !== "undefined") {
                     userChrome_js.injectMods();
@@ -38,7 +117,7 @@
                 }
             }, 300);
         },
-        async listMods(directory) {
+        async listMods (directory) {
             console.log("getMods: " + directory.fullPath.replace('/crxfs/', ''));
 
             const entries = await readEntriesAsync(directory);
@@ -47,11 +126,12 @@
                 if (mod.isDirectory) {
                     await this.listMods(mod);
                 } else {
-                    await this.addMod(mod);
+                    if (!MODS_SKIP_LIST.includes(mod.name))
+                        await this.addMod(mod);
                 }
             }
         },
-        addMod(mod) {
+        addMod (mod) {
             var modPath = mod.fullPath.replace('/crxfs/', '');
             if (mod.isFile) {
                 if (mod.name.toLowerCase().endsWith(MODS_SCRIPT_EXTENSION)) {
@@ -69,7 +149,7 @@
                 }
             }
         },
-        injectMods() {
+        injectMods () {
             for (var i = 0; i < this.scripts.length; i++) {
                 console.log("Injecting script: " + this.scripts[i].path.replace(MODS_DIRECTORY_NAME + '/', ''));
                 if (this.scripts[i].loaded) {
@@ -89,7 +169,7 @@
         }
     }
 
-    function getPackageDirectoryEntryAsync() {
+    function getPackageDirectoryEntryAsync () {
         return new Promise((resolve, reject) => {
             chrome.runtime.getPackageDirectoryEntry((entry) => {
                 if (chrome.runtime.lastError) {
@@ -101,7 +181,7 @@
         });
     }
 
-    function readEntriesAsync(directory) {
+    function readEntriesAsync (directory) {
         return new Promise((resolve, reject) => {
             const reader = directory.createReader();
             reader.readEntries((entries) => {
@@ -114,7 +194,7 @@
         });
     }
 
-    function injectStyle(file) {
+    function injectStyle (file) {
         console.log("Injecting style: " + file.replace(MODS_DIRECTORY_NAME + '/', ''));
         var link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -123,64 +203,12 @@
         return link;
     }
 
-    function $(selector, context) {
-        context = context || document; // 如果没有上下文，默认使用 document
 
-        // 使用传入的上下文执行选择器查询
-        if (typeof selector === 'string') {
-            this.elements = context.querySelectorAll(selector);
-        } else if (selector instanceof HTMLElement) {
-            this.elements = [selector];
-        }
-    }
-
-    // 遍历每个选中的元素
-    $.prototype.each = function(callback) {
-        this.elements.forEach((el, index) => {
-            callback.call(el, index, el);
-        });
-        return this;
-    };
-
-    // 实现 find 功能，指定在当前元素范围内进行选择
-    $.prototype.find = function(selector) {
-        const results = [];
-        this.each(function() {
-            results.push(...this.querySelectorAll(selector));
-        });
-        this.elements = results;
-        return this;
-    };
-
-    // 添加 class 操作
-    $.prototype.addClass = function(className) {
-        return this.each(function() {
-            this.classList.add(className);
-        });
-    };
-
-    $.prototype.removeClass = function(className) {
-        return this.each(function() {
-            this.classList.remove(className);
-        });
-    };
-
-    $.prototype.toggleClass = function(className) {
-        return this.each(function() {
-            this.classList.toggle(className);
-        });
-    };
-
-    // 添加事件监听
-    $.prototype.on = function(event, handler) {
-        return this.each(function() {
-            this.addEventListener(event, handler);
-        });
-    };
-
-    // 将工具函数绑定到全局对象
-    window.$ = function(selector, context) {
-        return new $(selector, context);
+    const appendChild = Element.prototype.appendChild;
+    Element.prototype.appendChild = function () {
+        let customEvent = new CustomEvent('appendChild', { detail: arguments });
+        document.dispatchEvent(customEvent);
+        return appendChild.apply(this, arguments);
     };
 
     window.userChrome_js.init();
