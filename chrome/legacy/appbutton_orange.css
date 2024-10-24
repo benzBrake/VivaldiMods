@@ -17,7 +17,7 @@
     border-radius: 0 0 6px 6px;
     left: 8px;
 
-    &>:is(.vivaldi-v, .expand-arrow) {
+    &>:is(.vivaldi-v, .expand-arrow, .burger-icon) {
         display: none;
     }
 
