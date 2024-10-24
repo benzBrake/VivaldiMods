@@ -25,7 +25,7 @@
     }
   }
   function onHover (e) {
-    const tab = e.target.closest('.tab');
+    const tab = e.target.closest('[role="tab"]');
     if (!tab) return;
     if (
       !tab.parentNode.classList.contains("active") &&

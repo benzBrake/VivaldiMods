@@ -33,7 +33,7 @@
             event.ctrlKey
         ) return;
         const target = $(event.target);
-        const tab = target.closest('.tab');
+        const tab = target.closest('[role="tab"]');
         const tabPosition = tab.closest('.tab-position');
         if (!tab.length || !tabPosition.length) return;
         event.stopPropagation();
