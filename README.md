@@ -2,6 +2,8 @@
 
 Vivaldi 自定义内容收藏夹
 
+目前我的 Vivaldi 版本：**7.0.3495.6 (Stable channel) （64 位）** 
+
 ## userChrome.js
 
 Vivaldi 的 UC Loader(UC 环境)，用于载入`.css`和`.ac.js`。我出于私心命名为`userChrome.js`了
