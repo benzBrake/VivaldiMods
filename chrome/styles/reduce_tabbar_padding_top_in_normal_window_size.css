@@ -10,15 +10,9 @@
     &.address-top:not(.fullscreen, .disable-titlebar) #header {
         min-height: calc(var(--tab-min-height) / var(--uiZoomLevel));
     }
-    & .window-buttongroup {
-        height: calc(var(--tab-min-height) / var(--uiZoomLevel) + 2 * var(--tab-block-margin, 0px));
 
-        &>button:not(.vivaldi) {
-            height: 100% !important;
-        }
-    }
     &:is(.win, .linux) #tabs-tabbar-container.top {
-        padding-top: var(--tab-block-margin, 0px);
+        padding-top: 0;
     }
 
     .vivaldi {
@@ -27,7 +21,20 @@
     }
 }
 
+#browser.tabs-top #titlebar {
+    & .window-buttongroup {
+        height: calc(var(--tab-min-height) / var(--uiZoomLevel) + 2 * var(--tab-block-margin, 0px));
+
+        &>button:not(.vivaldi) {
+            height: 100% !important;
+        }
+    }
+
+    &:has(~ .tabbar-wrapper > #tabs-tabbar-container >#tabs-subcontainer) .window-buttongroup {
+        height: calc(var(--tab-min-height) / var(--uiZoomLevel) + var(--tab-block-margin, 0px));
+    }
+}
+
 .tab-position .tab .tab-header {
     flex: 0 0 calc(var(--tab-min-height) / var(--uiZoomLevel)) !important;
 }
-
