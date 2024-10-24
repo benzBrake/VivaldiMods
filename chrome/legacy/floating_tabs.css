@@ -32,6 +32,10 @@
 
 		.tab-strip>span+span>.tab-position:has(>.tab:not(.pinned))>.tab {
 			margin-left: var(--tab-inline-margin);
+
+			& .tab-header {
+				width: calc(var(--Width) - var(--tab-inline-margin));
+			}
 		}
 
 		& #tabs-container {
@@ -151,17 +155,4 @@
 	.tab-header {
 		background-color: var(--colorBg);
 	}
-}
-
-/* -- Main Bar -- */
-.mainbar {
-	&>.toolbar-mainbar {
-		align-items: stretch;
-		height: var(--tab-mainbar-height);
-		padding: var(--tab-inline-margin);
-	}
-}
-
-.toolbar-mainbar .profile-popup {
-	margin-right: var(--tab-post-spacer-width);
 }
