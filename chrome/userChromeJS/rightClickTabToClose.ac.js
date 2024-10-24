@@ -57,11 +57,6 @@
             await chrome.tabs.create({ url: homePage });
         }
         await chrome.tabs.remove(toBeRemoved);
-        let activateTab = await getTabs({ active: true });
-        if (!activateTab.length) {
-            let existsTabs = await getTabs();
-            await switchToTab(existsTabs[0].id);
-        }
     }
 
     $('#tabs-container .tab-strip').on('contextmenu', closeTab);
