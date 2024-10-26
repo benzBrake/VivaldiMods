@@ -44,7 +44,6 @@
     $(document).on('appendChild', function (event) {
         const insertElement = event.detail[0];
         if (!insertElement) return;
-        console.log(insertElement.tagName, insertElement.className);
         if (insertElement.tagName !== "DIV") return;
         if (insertElement.classList.contains("toggle-trash")
         ) {
