@@ -35,7 +35,11 @@
         const target = $(event.target);
         const tab = target.closest('[role="tab"]');
         const tabPosition = tab.closest('.tab-position');
-        if (!tab.length || !tabPosition.length) return;
+        if (!tab.length || !tabPosition.length) {
+            console.log(tab);
+            console.log(event);
+            return;
+        }
         event.stopPropagation();
         event.preventDefault();
         const currentId = tab.get(0).id.replace(/^tab-/g, "");
@@ -60,11 +64,14 @@
         let tabs = await getTabs({ active: true });
         if (tabs.length) {
             await switchToTab(tabs[0].id);
+        } else {
+            let tabs = await getTabs();
+            await switchToTab(tabs[0].id);
         }
     }
 
-    $('#tabs-container .tab-strip').on('contextmenu', closeTab);
-    $('#tabs-subcontainer .tab-strip').on('contextmenu', closeTab);
+    $('#tabs-container .tab-strip').on('contextmenu', '.tab', closeTab);
+    $('#tabs-subcontainer .tab-strip').on('contextmenu', '.tab', closeTab);
 
     // 调整标签位置后重新绑定事件
     $(document).on('appendChild', function (event) {
@@ -73,9 +80,9 @@
         if (insertElement.tagName !== "DIV") return;
         if (insertElement.classList.contains("tabbar-wrapper")
         ) {
-            $('#tabs-container .tab-strip', insertElement).on('contextmenu', closeTab);
+            $('#tabs-container .tab-strip', insertElement).on('contextmenu', '.tab', closeTab);
         } else if (insertElement.id === "tabs-subcontainer") {
-            $('.tab-strip', insertElement).on('contextmenu', closeTab);
+            $('.tab-strip', insertElement).on('contextmenu', '.tab', closeTab);
         }
     });
 })();
