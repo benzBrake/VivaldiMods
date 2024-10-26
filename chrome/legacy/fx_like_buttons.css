@@ -9,8 +9,25 @@
     --hollow-star-icon: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik00LjE4NSAxNS40OTljLS4zMzYgMC0uNjcxLS4xMDQtLjk1Ny0uMzEzYTEuNjIgMS42MiAwIDAgMS0uNjIxLTEuNzJsLjg2LTMuMzc1LTIuNjgtMi4yMjZBMS42MTggMS42MTggMCAwIDEgLjI3OSA2LjExYTEuNjIxIDEuNjIxIDAgMCAxIDEuNDQ0LTEuMTIybDMuNDc1LS4yMjUgMS4yODgtMy4yMzdDNi43MzUuOTAzIDcuMzI5LjUgOCAuNXMxLjI2NS40MDMgMS41MTQgMS4wMjZsMS4yODggMy4yMzcgMy40NzUuMjI1YTEuNjIgMS42MiAwIDAgMSAxLjQ0NCAxLjEyMiAxLjYyIDEuNjIgMCAwIDEtLjUwOSAxLjc1N2wtMi42OCAyLjIyNS44NiAzLjM3NWExLjYyIDEuNjIgMCAwIDEtLjYyMSAxLjcyIDEuNjE4IDEuNjE4IDAgMCAxLTEuODI4LjA1OUw4IDEzLjM4NWwtMi45NDQgMS44NjFhMS42MyAxLjYzIDAgMCAxLS44NzEuMjUzek04IDEuNzVhLjM2NS4zNjUgMCAwIDAtLjM1Mi4yMzlMNi4yMTQgNS41OTJsLS41NDEuMzkzLTMuODcuMjUxYS4zNjYuMzY2IDAgMCAwLS4zMzYuMjYxLjM2NC4zNjQgMCAwIDAgLjExOS40MDdMNC41NyA5LjM4M2wuMjA2LjYzNS0uOTU4IDMuNzU4YS4zNjQuMzY0IDAgMCAwIC4xNDUuMzk5Yy4wNjMuMDQ3LjIzLjEzOS40MjYuMDE0bDMuMjc4LTIuMDcxLjY2OCAwIDMuMjc4IDIuMDcxYS4zNjUuMzY1IDAgMCAwIC40MjYtLjAxNC4zNjcuMzY3IDAgMCAwIC4xNDMtLjRsLS45NTgtMy43NTguMjA2LS42MzUgMi45ODQtMi40NzhhLjM2NC4zNjQgMCAwIDAgLjExOS0uNDA4LjM2Ny4zNjcgMCAwIDAtLjMzNi0uMjYxbC0zLjg2OS0uMjUxLS41NDEtLjM5My0xLjQzNS0zLjYwM0EuMzY3LjM2NyAwIDAgMCA4IDEuNzV6Ii8+PC9zdmc+)
 }
 
-:is(.sync-and-trash-container, .BookmarkButton-Button, .button-toolbar.newtab) {
-    button {
+/** 阅读模式 */
+button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View"], [title="リーダービュー"], [title="리더 보기"]) {
+    &::before {
+        content: "";
+        display: flex;
+        width: 16px;
+        height: 16px;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik00IDFhMiAyIDAgMCAwLTIgMmwwIDEwYTIgMiAwIDAgMCAyIDJsOCAwYTIgMiAwIDAgMCAyLTJsMC0xMGEyIDIgMCAwIDAtMi0yTDQgMXptOC43NSAxMi4xNS0uNi42LTguMyAwLS42LS42IDAtMTAuMy42LS42IDguMyAwIC42LjYgMCAxMC4zeiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDUuMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDguMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtOC4xMjUgMTEuMjUtMi4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWwyLjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPjwvc3ZnPg==);
+    }
+
+    &>.button-icon {
+        display: none;
+    }
+}
+
+:is(.toggle-trash, .BookmarkButton-Button, .button-toolbar.newtab) {
+    & button {
         &::before {
             content: "";
             display: flex;
