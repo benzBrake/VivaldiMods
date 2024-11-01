@@ -17,6 +17,7 @@
     const MODS_DIRECTORY_NAME = 'chrome';
     const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
+    const MODS_SKIP_DIRS = ['deprecated'];
     const MODS_SKIP_LIST = ['userChrome.js'];
 
     function $ (selector, context) {
@@ -170,7 +171,7 @@
             const entries = await readEntriesAsync(directory);
 
             for (const mod of entries) {
-                if (mod.isDirectory) {
+                if (mod.isDirectory && !MODS_SKIP_DIRS.includes(mod.name)) {
                     await this.listMods(mod);
                 } else {
                     if (!MODS_SKIP_LIST.includes(mod.name))
