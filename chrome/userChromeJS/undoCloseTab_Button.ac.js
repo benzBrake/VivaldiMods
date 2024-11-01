@@ -13,10 +13,10 @@
         if ($('.button-toolbar.undo-close-tab').length) return;
         let ins = document.querySelector('.toggle-trash');
         if (!ins) return;
-        let wrapper = _uc.createElement('div', {
+        let wrapper = userChrome_js.createElement('div', {
             class: 'button-toolbar undo-close-tab'
         });
-        let btn = _uc.createElement('button', {
+        let btn = userChrome_js.createElement('button', {
             name: 'UndoCloseTab',
             title: '打开最近关闭的标签页',
             type: "button",

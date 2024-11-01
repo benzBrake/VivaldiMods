@@ -32,21 +32,17 @@
             event.shiftKey ||
             event.ctrlKey
         ) return;
-        const target = $(event.target);
-        const tab = target.closest('[role="tab"]');
+        const tab = $(event.target).closest('[role="tab"]');
         const tabPosition = tab.closest('.tab-position');
         if (!tab.length || !tabPosition.length) {
-            console.log(tab);
-            console.log(event);
             return;
         }
         event.stopPropagation();
         event.preventDefault();
-        const currentId = tab.get(0).id.replace(/^tab-/g, "");
+        const currentId = tab[0].id.replace(/^tab-/g, "");
         let toBeRemoved = [];
         if (tabPosition.hasClass('is-substack')) {
             let tabs = await getTabs();
-            console.log(tabs);
             tabs = tabs.filter(t =>
                 JSON.parse(t.vivExtData).group == currentId
             );
@@ -54,6 +50,7 @@
         } else {
             toBeRemoved = [Number(currentId)];
         }
+        console.log(toBeRemoved);
         let existsTabs = await getTabs();
         let keepWindowOpenAfterLastTabClosed = await vivaldi.prefs.get('vivaldi.tabs.never_close_last');
         if (existsTabs.length === toBeRemoved.length && keepWindowOpenAfterLastTabClosed) {
@@ -70,8 +67,8 @@
         }
     }
 
-    $('#tabs-container .tab-strip').on('contextmenu', '.tab', closeTab);
-    $('#tabs-subcontainer .tab-strip').on('contextmenu', '.tab', closeTab);
+    $('#tabs-container .tab-strip').on('contextmenu', '[role="tab"]', closeTab);
+    $('#tabs-subcontainer .tab-strip').on('contextmenu', '[role="tab"]', closeTab);
 
     // 调整标签位置后重新绑定事件
     $(document).on('appendChild', function (event) {
@@ -80,9 +77,9 @@
         if (insertElement.tagName !== "DIV") return;
         if (insertElement.classList.contains("tabbar-wrapper")
         ) {
-            $('#tabs-container .tab-strip', insertElement).on('contextmenu', '.tab', closeTab);
+            $('#tabs-container .tab-strip', insertElement).on('contextmenu', '[role="tab"]', closeTab);
         } else if (insertElement.id === "tabs-subcontainer") {
-            $('.tab-strip', insertElement).on('contextmenu', '.tab', closeTab);
+            $('.tab-strip', insertElement).on('contextmenu', '[role="tab"]', closeTab);
         }
     });
 })();
