@@ -214,6 +214,33 @@
             for (var i = 0; i < this.styles.length; i++) {
                 injectStyle(this.styles[i].path);
             }
+        },
+        createElement (tag, attrs) {
+            var el = document.createElement(tag);
+            for (var attr in attrs) {
+                switch (attr) {
+                    case 'testContent':
+                    case 'innerText':
+                    case 'innerHTML':
+                        el[attr] = attrs[attr];
+                        break;
+                    case 'style':
+                        if (typeof attrs[attr] === 'object') {
+                            let styles = attrs[attr];
+                            for (let style in styles) {
+                                el.style.setProperty(style, styles[style]);
+                            }
+                        }
+                        break;
+                    default:
+                        if (attr.startsWith('on') && typeof attrs[attr] === 'function') {
+                            el.addEventListener(attr.substring(2), attrs[attr]);
+                        } else {
+                            el.setAttribute(attr, attrs[attr]);
+                        }
+                }
+            }
+            return el;
         }
     }
 
