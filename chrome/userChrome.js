@@ -20,7 +20,7 @@
     const MODS_SKIP_DIRS = ['deprecated'];
     const MODS_SKIP_LIST = ['userChrome.js'];
 
-    function $ (selector, context) {
+    function $(selector, context) {
         context = context || document; // 默认上下文为 document
         this.elements = [];
         if (typeof selector === 'string') {
@@ -34,6 +34,24 @@
         } else if (selector instanceof HTMLElement) {
             this.elements = [selector];
         }
+    
+        // 使对象可以像数组一样被索引
+        Object.defineProperty(this, 'length', {
+            get: function() { return this.elements.length; },
+            configurable: true
+        });
+    
+        // 添加属性访问器以支持方括号访问
+        const handler = {
+            get: function(target, prop) {
+                if (typeof prop === 'string' && !isNaN(prop)) {
+                    return target.elements[prop];
+                }
+                return target[prop];
+            }
+        };
+    
+        return new Proxy(this, handler);
     }
 
     // 遍历每个选中的元素
@@ -103,16 +121,64 @@
     };
 
     // 添加事件监听
-    $.prototype.on = function (event, handler) {
-        return this.each(function () {
-            this.addEventListener(event, handler);
-        });
+    $.prototype.on = function (event, selectorOrHandler, handler) {
+        if (typeof selectorOrHandler === 'string' && typeof handler === 'function') {
+            // 事件委托
+            return this.each(function () {
+                this.addEventListener(event, function (e) {
+                    const potentialElements = this.querySelectorAll(selectorOrHandler);
+                    let target = e.target;
+                    while (target && target !== this) {
+                        if ([...potentialElements].includes(target)) {
+                            handler.call(target, e);
+                            break;
+                        }
+                        target = target.parentNode;
+                    }
+                });
+            });
+        } else if (typeof selectorOrHandler === 'function') {
+            // 普通事件监听
+            return this.each(function () {
+                this.addEventListener(event, selectorOrHandler);
+            });
+        } else {
+            throw new TypeError('Handler must be a function');
+        }
     };
 
     // 移除事件监听
-    $.prototype.off = function (event, handler) {
+    $.prototype.off = function (event, selectorOrHandler, handler) {
         return this.each(function () {
-            this.removeEventListener(event, handler);
+            const element = this;
+
+            // 如果没有指定事件，移除所有事件监听
+            if (!event) {
+                const clone = element.cloneNode(true);
+                element.parentNode.replaceChild(clone, element);
+                return;
+            }
+
+            // 如果是事件委托
+            if (typeof selectorOrHandler === 'string' && typeof handler === 'function') {
+                const delegatedHandler = function (e) {
+                    const potentialElements = element.querySelectorAll(selectorOrHandler);
+                    let target = e.target;
+                    while (target && target !== element) {
+                        if ([...potentialElements].includes(target)) {
+                            handler.call(target, e);
+                            break;
+                        }
+                        target = target.parentNode;
+                    }
+                };
+                element.removeEventListener(event, delegatedHandler);
+            } else if (typeof selectorOrHandler === 'function') {
+                // 普通事件监听
+                element.removeEventListener(event, selectorOrHandler);
+            } else {
+                throw new TypeError('Handler must be a function');
+            }
         });
     };
 
@@ -132,13 +198,6 @@
     $.prototype.get = function (index) {
         return this.elements[index];
     };
-
-    // 增加 length 属性
-    Object.defineProperty($.prototype, 'length', {
-        get: function () {
-            return this.elements.length;
-        }
-    });
 
     // 将工具函数绑定到全局对象
     window.$ = function (selector, context) {
