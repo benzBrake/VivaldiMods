@@ -13,6 +13,9 @@
         if ($('.button-toolbar.undo-close-tab').length) return;
         let ins = document.querySelector('.toggle-trash');
         if (!ins) return;
+        if (ins.parentNode.classList.contains('drag-area')) {
+            ins = ins.parentNode;
+        }
         let wrapper = userChrome_js.createElement('div', {
             class: 'button-toolbar undo-close-tab'
         });
