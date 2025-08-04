@@ -16,9 +16,9 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
         display: flex;
         width: 16px;
         height: 16px;
-        background-repeat: no-repeat;
-        background-size: 16px;
-        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik00IDFhMiAyIDAgMCAwLTIgMmwwIDEwYTIgMiAwIDAgMCAyIDJsOCAwYTIgMiAwIDAgMCAyLTJsMC0xMGEyIDIgMCAwIDAtMi0yTDQgMXptOC43NSAxMi4xNS0uNi42LTguMyAwLS42LS42IDAtMTAuMy42LS42IDguMyAwIC42LjYgMCAxMC4zeiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDUuMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDguMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtOC4xMjUgMTEuMjUtMi4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWwyLjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPjwvc3ZnPg==);
+        mask-repeat: no-repeat;
+        mask-size: 16px;
+        mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik00IDFhMiAyIDAgMCAwLTIgMmwwIDEwYTIgMiAwIDAgMCAyIDJsOCAwYTIgMiAwIDAgMCAyLTJsMC0xMGEyIDIgMCAwIDAtMi0yTDQgMXptOC43NSAxMi4xNS0uNi42LTguMyAwLS42LS42IDAtMTAuMy42LS42IDguMyAwIC42LjYgMCAxMC4zeiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDUuMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDguMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtOC4xMjUgMTEuMjUtMi4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWwyLjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPjwvc3ZnPg==);
     }
 
     &>.button-icon {
@@ -33,8 +33,9 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
             display: flex;
             width: 16px;
             height: 16px;
-            background-repeat: no-repeat;
-            background-size: 16px;
+            mask-size: contain;
+            mask-repeat: no-repeat;
+            background-color: currentColor;
         }
 
         &>.button-icon {
@@ -43,9 +44,10 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
     }
 }
 
-.sync-and-trash-container button {
+.sync-and-trash-container button,
+button[name="TabsTrash"] {
     &::before {
-        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im04LjM1MiAxMC45OTkgNS40NjYtNS40NjVhLjYyMy42MjMgMCAwIDAtLjAwMS0uODg0LjYyOC42MjggMCAwIDAtLjg4NSAwTDcuOTk4IDkuNTg1bC00LjkzLTQuOTM0YS42MjYuNjI2IDAgMCAwLS44ODUuODg1TDcuNjQ4IDExbC43MDQtLjAwMXoiLz48L3N2Zz4K);
+        mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im04LjM1MiAxMC45OTkgNS40NjYtNS40NjVhLjYyMy42MjMgMCAwIDAtLjAwMS0uODg0LjYyOC42MjggMCAwIDAtLjg4NSAwTDcuOTk4IDkuNTg1bC00LjkzLTQuOTM0YS42MjYuNjI2IDAgMCAwLS44ODUuODg1TDcuNjQ4IDExbC43MDQtLjAwMXoiLz48L3N2Zz4K);
     }
 
     &.bottom {
@@ -58,11 +60,11 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
 /** Bookmark in Url */
 .BookmarkButton-Button>button {
     &::before {
-        background-image: var(--hollow-star-icon);
+        mask-image: var(--hollow-star-icon);
     }
 
     &.button-on::before {
-        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik0zLjQ3NSA5LjgyNC42MTUgNy40NDlBMS4yMDcgMS4yMDcgMCAwIDEgLjIzNyA2LjE0YTEuMjA1IDEuMjA1IDAgMCAxIDEuMDc0LS44MzVsMy42OTctLjIzOS41MDEtLjM3NSAxLjM2NC0zLjQyN0M3LjA1OS44IDcuNTAxLjUgOCAuNXMuOTQxLjMgMS4xMjcuNzYzbDAgLjAwMSAxLjM2NCAzLjQyNy41MDEuMzc1IDMuNjk3LjIzOWMuNDk4LjAzMi45Mi4zNiAxLjA3NC44MzUuMTU1LjQ3Ni4wMDYuOTktLjM3OCAxLjMwOUwxMi41MyA5LjgybC0uMTguNTkyLjkxIDMuNTc1Yy4xMjMuNDg1LS4wNTkuOTg2LS40NjMgMS4yNzlhMS4yMTMgMS4yMTMgMCAwIDEtMS4zNi4wNDVMOC4zMSAxMy4zMzRsLS42MjEgMC0zLjEyNiAxLjk3N2MtLjQyNi4yNjYtLjk2LjI0Ny0xLjM2MS0uMDQ1YTEuMjA1IDEuMjA1IDAgMCAxLS40NjMtMS4yNzlsLjkwOC0zLjU2Ni0uMTcyLS41OTd6Ii8+PC9zdmc+);
+        mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik0zLjQ3NSA5LjgyNC42MTUgNy40NDlBMS4yMDcgMS4yMDcgMCAwIDEgLjIzNyA2LjE0YTEuMjA1IDEuMjA1IDAgMCAxIDEuMDc0LS44MzVsMy42OTctLjIzOS41MDEtLjM3NSAxLjM2NC0zLjQyN0M3LjA1OS44IDcuNTAxLjUgOCAuNXMuOTQxLjMgMS4xMjcuNzYzbDAgLjAwMSAxLjM2NCAzLjQyNy41MDEuMzc1IDMuNjk3LjIzOWMuNDk4LjAzMi45Mi4zNiAxLjA3NC44MzUuMTU1LjQ3Ni4wMDYuOTktLjM3OCAxLjMwOUwxMi41MyA5LjgybC0uMTguNTkyLjkxIDMuNTc1Yy4xMjMuNDg1LS4wNTkuOTg2LS40NjMgMS4yNzlhMS4yMTMgMS4yMTMgMCAwIDEtMS4zNi4wNDVMOC4zMSAxMy4zMzRsLS42MjEgMC0zLjEyNiAxLjk3N2MtLjQyNi4yNjYtLjk2LjI0Ny0xLjM2MS0uMDQ1YTEuMjA1IDEuMjA1IDAgMCAxLS40NjMtMS4yNzlsLjkwOC0zLjU2Ni0uMTcyLS41OTd6Ii8+PC9zdmc+);
     }
 }
 
@@ -70,7 +72,7 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
 .button-toolbar.newtab {
     button {
         &::before {
-            background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0iY3VycmVudENvbG9yIj4KICA8cGF0aCBkPSJNNyA5Ljc1IDcgMTRhLjYyNS42MjUgMCAwIDAgMS4yNSAwbDAtNC4yNS41LS41IDQuMjUgMEEuNjI1LjYyNSAwIDAgMCAxMyA4TDguNzUgOGwtLjUtLjUgMC00LjI1YS42MjUuNjI1IDAgMCAwLTEuMjUgMEw3IDcuNWwtLjUuNS00LjI1IDBhLjYyNS42MjUgMCAwIDAgMCAxLjI1bDQuMTM3IDB6Ii8+PC9zdmc+)
+            mask-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbD0iY3VycmVudENvbG9yIj4KICA8cGF0aCBkPSJNNyA5Ljc1IDcgMTRhLjYyNS42MjUgMCAwIDAgMS4yNSAwbDAtNC4yNS41LS41IDQuMjUgMEEuNjI1LjYyNSAwIDAgMCAxMyA4TDguNzUgOGwtLjUtLjUgMC00LjI1YS42MjUuNjI1IDAgMCAwLTEuMjUgMEw3IDcuNWwtLjUuNS00LjI1IDBhLjYyNS42MjUgMCAwIDAgMCAxLjI1bDQuMTM3IDB6Ii8+PC9zdmc+)
         }
     }
 }
@@ -82,9 +84,9 @@ button[name="AccountButton"]:has(>img[src="/resources/contact-person.png"]) {
         display: flex;
         width: 20px;
         height: 20px;
-        background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik04LjUgMTMuMjVjMS45MTIgMCAzLjU3MS0xLjAzOCA0LjQ4OS0yLjU2OUExLjk5MyAxLjk5MyAwIDAgMCAxMS40OTUgMTBsLTUuOTkgMGMtLjU5NiAwLTEuMTI2LjI2Ny0xLjQ5NC42ODEuOTE4IDEuNTMxIDIuNTc3IDIuNTY5IDQuNDg5IDIuNTY5eiIvPgogIDxwYXRoIGQ9Ik04LjUgNGEyLjUgMi41IDAgMSAwIDAgNSAyLjUgMi41IDAgMCAwIDAtNXoiLz4KICA8cGF0aCBkPSJNOC41IDIuMjVjMy40NDYgMCA2LjI1IDIuODA0IDYuMjUgNi4yNXMtMi44MDQgNi4yNS02LjI1IDYuMjUtNi4yNS0yLjgwNC02LjI1LTYuMjVTNS4wNTQgMi4yNSA4LjUgMi4yNU04LjUgMWE3LjUgNy41IDAgMSAwIDAgMTUgNy41IDcuNSAwIDAgMCAwLTE1eiIvPjwvc3ZnPgo=);
-        background-repeat: no-repeat;
-        background-size: 20px;
+        mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik04LjUgMTMuMjVjMS45MTIgMCAzLjU3MS0xLjAzOCA0LjQ4OS0yLjU2OUExLjk5MyAxLjk5MyAwIDAgMCAxMS40OTUgMTBsLTUuOTkgMGMtLjU5NiAwLTEuMTI2LjI2Ny0xLjQ5NC42ODEuOTE4IDEuNTMxIDIuNTc3IDIuNTY5IDQuNDg5IDIuNTY5eiIvPgogIDxwYXRoIGQ9Ik04LjUgNGEyLjUgMi41IDAgMSAwIDAgNSAyLjUgMi41IDAgMCAwIDAtNXoiLz4KICA8cGF0aCBkPSJNOC41IDIuMjVjMy40NDYgMCA2LjI1IDIuODA0IDYuMjUgNi4yNXMtMi44MDQgNi4yNS02LjI1IDYuMjUtNi4yNS0yLjgwNC02LjI1LTYuMjVTNS4wNTQgMi4yNSA4LjUgMi4yNU04LjUgMWE3LjUgNy41IDAgMSAwIDAgMTUgNy41IDcuNSAwIDAgMCAwLTE1eiIvPjwvc3ZnPgo=);
+        mask-repeat: no-repeat;
+        mask-size: 20px;
         transform: translateY(-1px);
     }
 
@@ -101,9 +103,10 @@ button {
             display: flex;
             width: 16px;
             height: 16px;
-            background-image: var(--button-image);
-            background-repeat: no-repeat;
-            background-size: 16px;
+            mask-image: var(--button-image);
+            mask-repeat: no-repeat;
+            mask-size: 16px;
+            background-color: currentColor;
         }
 
         &>.button-icon {
