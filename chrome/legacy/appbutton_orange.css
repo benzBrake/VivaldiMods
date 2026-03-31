@@ -9,9 +9,10 @@
 
 .vivaldi {
     --menuWidth: 80px;
+    display: flex !important;
     background: linear-gradient(rgb(247, 182, 82), rgb(215, 98, 10) 95%) !important;
     border-radius: 6px;
-    left: 8px;
+    left: 4px;
 
     &>:is(.vivaldi-v, .expand-arrow, .burger-icon) {
         display: none;
