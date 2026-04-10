@@ -1,8 +1,13 @@
-/* 
- * Firefox Orange App Button
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
-
+/* ==UserStyle==
+ * @name                Firefox Orange App Button
+ * @name:zh-CN          仿 Firefox 橙色按钮
+ * @description         Change Vivaldi's app button to Firefox orange
+ * @description:zh-CN   修改 Vivaldi 的应用按钮为火狐橙
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 #tabs-tabbar-container {
     --menuWidth: 92px;
 }

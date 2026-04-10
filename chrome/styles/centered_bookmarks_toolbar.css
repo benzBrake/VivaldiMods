@@ -1,7 +1,13 @@
-/* 
- * Centered bookmark items in the bookmarks bar
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Centered Bookmarks Toolbar
+ * @name:zh-CN          书签栏居中显示
+ * @description         Center bookmark items in the bookmarks bar
+ * @description:zh-CN   让书签栏中的书签项目居中显示
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .bookmark-bar .observer {
     justify-content: center;
 }

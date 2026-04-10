@@ -1,7 +1,13 @@
-/* 
- * Show topmenu and tabs bar in one line
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Topmenu In Tabsbar
+ * @name:zh-CN          顶部菜单与标签栏同一行显示
+ * @description         Show the top menu and the tab bar on the same line
+ * @description:zh-CN   将顶部菜单与标签栏合并到同一行显示
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 #browser.tabs-top {
     & #header:has(>.topmenu) {
         display: flex;

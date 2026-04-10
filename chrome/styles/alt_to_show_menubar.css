@@ -1,7 +1,13 @@
-/* 
- * Press to show menubar
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Alt To Show Menubar
+ * @name:zh-CN          按 Alt 显示菜单栏
+ * @description         Show the horizontal menubar when it is focused or activated
+ * @description:zh-CN   在焦点或激活状态下显示横向菜单栏
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .menubar.horizontal {
     transition-delay: 0.2s;
 

@@ -1,7 +1,13 @@
-/* 
- * Make bookmark text blur when not hovering in the bookmarks bar
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Blur Bookmark Bar Items
+ * @name:zh-CN          模糊书签栏项目文字
+ * @description         Blur bookmark titles until the mouse hovers over them
+ * @description:zh-CN   书签栏文字在鼠标悬停前保持模糊
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .bookmark-bar>.observer>button {
 	transition: all cubic-bezier(0.075, 0.82, 0.165, 1) .3s;
 	>span.title {

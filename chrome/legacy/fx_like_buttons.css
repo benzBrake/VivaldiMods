@@ -1,10 +1,13 @@
-/* VivaldiMods tweaks *******************************************************************/
-/* Github: https://github.com/benzBrake/VivaldiMods *************************************/
-/* Copyright ****************************************************************************/
-/* SVG Source Code Form is subject to the terms of the Mozilla Public *******************/
-/*   - License, v. 2.0. If a copy of the MPL was not distributed with this **************/
-/*  - file, You can obtain one at http://mozilla.org/MPL/2.0/ ***************************/
-/****************************************************************************************/
+/* ==UserStyle==
+ * @name                Firefox-Like Buttons
+ * @name:zh-CN          仿 Firefox 按钮图标
+ * @description         Replace several Vivaldi toolbar button icons with Firefox-like ones
+ * @description:zh-CN   将多个 Vivaldi 工具栏按钮图标替换为仿 Firefox 风格
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 :root {
     --hollow-star-icon: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPgogIDxwYXRoIGQ9Ik00LjE4NSAxNS40OTljLS4zMzYgMC0uNjcxLS4xMDQtLjk1Ny0uMzEzYTEuNjIgMS42MiAwIDAgMS0uNjIxLTEuNzJsLjg2LTMuMzc1LTIuNjgtMi4yMjZBMS42MTggMS42MTggMCAwIDEgLjI3OSA2LjExYTEuNjIxIDEuNjIxIDAgMCAxIDEuNDQ0LTEuMTIybDMuNDc1LS4yMjUgMS4yODgtMy4yMzdDNi43MzUuOTAzIDcuMzI5LjUgOCAuNXMxLjI2NS40MDMgMS41MTQgMS4wMjZsMS4yODggMy4yMzcgMy40NzUuMjI1YTEuNjIgMS42MiAwIDAgMSAxLjQ0NCAxLjEyMiAxLjYyIDEuNjIgMCAwIDEtLjUwOSAxLjc1N2wtMi42OCAyLjIyNS44NiAzLjM3NWExLjYyIDEuNjIgMCAwIDEtLjYyMSAxLjcyIDEuNjE4IDEuNjE4IDAgMCAxLTEuODI4LjA1OUw4IDEzLjM4NWwtMi45NDQgMS44NjFhMS42MyAxLjYzIDAgMCAxLS44NzEuMjUzek04IDEuNzVhLjM2NS4zNjUgMCAwIDAtLjM1Mi4yMzlMNi4yMTQgNS41OTJsLS41NDEuMzkzLTMuODcuMjUxYS4zNjYuMzY2IDAgMCAwLS4zMzYuMjYxLjM2NC4zNjQgMCAwIDAgLjExOS40MDdMNC41NyA5LjM4M2wuMjA2LjYzNS0uOTU4IDMuNzU4YS4zNjQuMzY0IDAgMCAwIC4xNDUuMzk5Yy4wNjMuMDQ3LjIzLjEzOS40MjYuMDE0bDMuMjc4LTIuMDcxLjY2OCAwIDMuMjc4IDIuMDcxYS4zNjUuMzY1IDAgMCAwIC40MjYtLjAxNC4zNjcuMzY3IDAgMCAwIC4xNDMtLjRsLS45NTgtMy43NTguMjA2LS42MzUgMi45ODQtMi40NzhhLjM2NC4zNjQgMCAwIDAgLjExOS0uNDA4LjM2Ny4zNjcgMCAwIDAtLjMzNi0uMjYxbC0zLjg2OS0uMjUxLS41NDEtLjM5My0xLjQzNS0zLjYwM0EuMzY3LjM2NyAwIDAgMCA4IDEuNzV6Ii8+PC9zdmc+)
 }

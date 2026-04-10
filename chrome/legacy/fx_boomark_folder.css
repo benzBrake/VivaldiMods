@@ -1,3 +1,13 @@
+/* ==UserStyle==
+ * @name                Firefox Bookmark Folder Icon
+ * @name:zh-CN          仿 Firefox 书签文件夹图标
+ * @description         Change Vivaldi bookmark folders to a Firefox-like folder icon
+ * @description:zh-CN   将 Vivaldi 书签文件夹改为仿 Firefox 的文件夹图标
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .bookmarkbarItem.folder {
     &>svg.folder-icon {
         display: none;

@@ -1,7 +1,13 @@
-/* 
- * Reposition Close Tab Button to favicon*
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Tab Close Over Favicon
+ * @name:zh-CN          标签关闭按钮覆盖在图标上
+ * @description         Move the tab close button on top of the favicon when hovering tabs
+ * @description:zh-CN   在标签悬停时将关闭按钮显示到 favicon 位置
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .tab-position {
 	&>.tab {
 		& .title {

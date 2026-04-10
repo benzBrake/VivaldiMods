@@ -1,7 +1,13 @@
-/* 
- * Sort Extensions Icons
- * @note VivaldiMods tweaks Github: https://github.com/benzBrake/VivaldiMods 
- */
+/* ==UserStyle==
+ * @name                Sort Extensions Icons
+ * @name:zh-CN          调整扩展图标顺序
+ * @description         Reorder extension icons so hidden ones appear before pinned ones
+ * @description:zh-CN   调整扩展图标顺序，让隐藏图标显示在固定图标前面
+ * @author              Ryan
+ * @version             0.1.0
+ * @compatibility       Vivaldi 6
+ * @homepageURL         https://github.com/benzBrake/VivaldiMods
+==/UserStyle== */
 .toolbar-extensions {
     & > .ExtensionIcon {
         order: 2;
