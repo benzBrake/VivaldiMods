@@ -277,6 +277,185 @@
         }, timeout || 300);
     }
 
+    function getPreferredLocales() {
+        const locales = [];
+        const primary = (chrome && chrome.i18n && typeof chrome.i18n.getUILanguage === 'function')
+            ? chrome.i18n.getUILanguage()
+            : (navigator.language || 'en-US');
+
+        function pushLocale(value) {
+            if (!value) {
+                return;
+            }
+
+            const normalized = String(value).replace('_', '-');
+            const lower = normalized.toLowerCase();
+            if (!locales.includes(lower)) {
+                locales.push(lower);
+            }
+
+            const base = lower.split('-')[0];
+            if (base && !locales.includes(base)) {
+                locales.push(base);
+            }
+        }
+
+        pushLocale(primary);
+        pushLocale(document.documentElement && document.documentElement.lang);
+        pushLocale('en-US');
+        pushLocale('en');
+        return locales;
+    }
+
+    function getLocalizedValue(metadata, key) {
+        if (!metadata || typeof metadata !== 'object') {
+            return '';
+        }
+
+        const locales = getPreferredLocales();
+        const metadataKeys = Object.keys(metadata);
+        for (const locale of locales) {
+            const matchKey = metadataKeys.find(function (candidate) {
+                const normalizedCandidate = candidate.toLowerCase();
+                return normalizedCandidate === (key + ':' + locale).toLowerCase();
+            });
+            if (matchKey && metadata[matchKey]) {
+                return metadata[matchKey];
+            }
+        }
+
+        return metadata[key] || '';
+    }
+
+    function readEntryText(entry, maxChars) {
+        return new Promise(function (resolve) {
+            if (!entry || !entry.isFile || typeof entry.file !== 'function') {
+                resolve('');
+                return;
+            }
+
+            entry.file(function (file) {
+                try {
+                    const blob = typeof maxChars === 'number' ? file.slice(0, maxChars) : file;
+                    const reader = new FileReader();
+                    reader.onload = function () {
+                        resolve(typeof reader.result === 'string' ? reader.result : '');
+                    };
+                    reader.onerror = function () {
+                        resolve('');
+                    };
+                    reader.readAsText(blob);
+                } catch (error) {
+                    console.warn('[userChrome.js] Failed to read mod file.', entry.fullPath, error);
+                    resolve('');
+                }
+            }, function () {
+                resolve('');
+            });
+        });
+    }
+
+    function parseKeyValueMetadata(text, commentPrefix, startMarker, endMarker) {
+        const metadata = {};
+        if (!text) {
+            return metadata;
+        }
+
+        const startIndex = text.indexOf(startMarker);
+        const endIndex = text.indexOf(endMarker, startIndex + startMarker.length);
+        if (startIndex === -1 || endIndex === -1) {
+            return metadata;
+        }
+
+        const block = text.slice(startIndex, endIndex + endMarker.length);
+        block.split(/\r?\n/).forEach(function (line) {
+            const normalized = line.replace(commentPrefix, '').trim();
+            const match = normalized.match(/^@([^\s]+)\s+(.+)$/);
+            if (!match) {
+                return;
+            }
+
+            const key = match[1];
+            const value = match[2].trim();
+            if (!value) {
+                return;
+            }
+
+            if (key === 'note') {
+                metadata.notes = metadata.notes || [];
+                metadata.notes.push(value);
+                return;
+            }
+
+            metadata[key] = value;
+        });
+
+        return metadata;
+    }
+
+    function parseCssMetadata(text) {
+        const metadata = {};
+        if (!text) {
+            return metadata;
+        }
+
+        const match = text.match(/\/\*([\s\S]*?)\*\//);
+        if (!match) {
+            return metadata;
+        }
+
+        const lines = match[1].split(/\r?\n/);
+        const plainLines = [];
+        lines.forEach(function (line) {
+            const normalized = line.replace(/^\s*\*\s?/, '').trim();
+            if (!normalized) {
+                return;
+            }
+
+            if (normalized === '==UserStyle==' || normalized === '==/UserStyle==') {
+                return;
+            }
+
+            const tagMatch = normalized.match(/^@([^\s]+)\s+(.+)$/);
+            if (tagMatch) {
+                const key = tagMatch[1];
+                const value = tagMatch[2].trim();
+                if (key === 'note') {
+                    metadata.notes = metadata.notes || [];
+                    metadata.notes.push(value);
+                } else {
+                    metadata[key] = value;
+                }
+                return;
+            }
+
+            plainLines.push(normalized);
+        });
+
+        if (plainLines.length) {
+            metadata.description = metadata.description || plainLines[0];
+        }
+
+        return metadata;
+    }
+
+    async function parseModMetadata(entry, type) {
+        const text = await readEntryText(entry, 4096);
+        if (!text) {
+            return {};
+        }
+
+        if (type === 'js') {
+            return parseKeyValueMetadata(text, /^\s*\/\/\s?/, '==UserScript==', '==/UserScript==');
+        }
+
+        if (type === 'css') {
+            return parseCssMetadata(text);
+        }
+
+        return {};
+    }
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
@@ -330,11 +509,11 @@
                 }
 
                 if (!MODS_SKIP_LIST.includes(entry.name)) {
-                    this.addMod(entry);
+                    await this.addMod(entry);
                 }
             }
         },
-        addMod(mod) {
+        async addMod(mod) {
             const normalizedPath = normalizePath(mod.fullPath);
             const normalizedName = mod.name.toLowerCase();
             let type = null;
@@ -350,13 +529,22 @@
             }
 
             const id = toModId(normalizedPath);
+            const metadata = await parseModMetadata(mod, type);
+            const displayName = getLocalizedValue(metadata, 'name') || mod.name;
+            const description = getLocalizedValue(metadata, 'description') || '';
             const modMeta = {
                 id: id,
                 path: normalizedPath,
                 relativePath: id,
                 name: mod.name,
+                displayName: displayName,
                 type: type,
                 internal: MODS_INTERNAL_IDS.includes(id),
+                description: description,
+                compatibility: metadata.compatibility || '',
+                version: metadata.version || '',
+                homepageURL: metadata.homepageURL || '',
+                notes: Array.isArray(metadata.notes) ? metadata.notes.slice() : [],
                 enabled: true,
                 loaded: false
             };
@@ -485,8 +673,14 @@
                 path: mod.path,
                 relativePath: mod.relativePath,
                 name: mod.name,
+                displayName: mod.displayName,
                 type: mod.type,
                 internal: mod.internal,
+                description: mod.description,
+                compatibility: mod.compatibility,
+                version: mod.version,
+                homepageURL: mod.homepageURL,
+                notes: Array.isArray(mod.notes) ? mod.notes.slice() : [],
                 enabled: mod.enabled,
                 loaded: mod.type === 'css' ? !!(this.styleNodes[mod.id] && this.styleNodes[mod.id].isConnected) : mod.loaded
             }));

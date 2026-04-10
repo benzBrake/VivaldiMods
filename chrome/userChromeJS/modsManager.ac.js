@@ -126,6 +126,30 @@
                 word-break: break-all;
             }
 
+            #${PANEL_ID} .mods-manager-description,
+            #${PANEL_ID} .mods-manager-meta {
+                margin: 6px 0 0;
+                font-size: 12px;
+                line-height: 1.45;
+                color: var(--colorFgFaded, rgba(34, 34, 34, 0.72));
+            }
+
+            #${PANEL_ID} .mods-manager-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            #${PANEL_ID} .mods-manager-meta-chip {
+                display: inline-flex;
+                align-items: center;
+                min-height: 20px;
+                padding: 0 8px;
+                border-radius: 999px;
+                background: rgba(0, 0, 0, 0.06);
+                color: inherit;
+            }
+
             #${PANEL_ID} .mods-manager-note {
                 margin: 6px 0 0;
                 font-size: 12px;
@@ -352,7 +376,7 @@
             });
 
             const name = userChrome_js.createElement('span', {
-                innerText: mod.name
+                innerText: mod.displayName || mod.name
             });
 
             title.appendChild(tag);
@@ -362,6 +386,34 @@
                 class: 'mods-manager-path',
                 innerText: mod.relativePath
             }));
+
+            if (mod.description) {
+                main.appendChild(userChrome_js.createElement('p', {
+                    class: 'mods-manager-description',
+                    innerText: mod.description
+                }));
+            }
+
+            const metaItems = [];
+            if (mod.version) {
+                metaItems.push('Version ' + mod.version);
+            }
+            if (mod.compatibility) {
+                metaItems.push(mod.compatibility);
+            }
+
+            if (metaItems.length) {
+                const meta = userChrome_js.createElement('div', {
+                    class: 'mods-manager-meta'
+                });
+                metaItems.forEach(function (itemText) {
+                    meta.appendChild(userChrome_js.createElement('span', {
+                        class: 'mods-manager-meta-chip',
+                        innerText: itemText
+                    }));
+                });
+                main.appendChild(meta);
+            }
 
             if (mod.type === 'js') {
                 main.appendChild(userChrome_js.createElement('p', {
