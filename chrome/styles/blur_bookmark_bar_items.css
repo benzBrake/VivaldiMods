@@ -5,7 +5,7 @@
  * @description:zh-CN   书签栏文字在鼠标悬停前保持模糊
  * @author              Ryan
  * @version             0.1.0
- * @compatibility       Vivaldi 6
+ * @compatibility       Vivaldi 7.9
  * @homepageURL         https://github.com/benzBrake/VivaldiMods
 ==/UserStyle== */
 .bookmark-bar>.observer>button {

@@ -2,7 +2,7 @@
 // @name            modsManager.ac.js
 // @description     Vivaldi Mod 管理器，统一管理 CSS / JS 的启用状态
 // @license         MIT License
-// @compatibility   Vivaldi 6
+// @compatibility   Vivaldi 7.9
 // @version         20260410
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS

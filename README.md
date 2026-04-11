@@ -2,7 +2,7 @@
 
 Vivaldi 自定义内容收藏夹
 
-目前我的 Vivaldi 版本：**7.0.3495.6 (Stable channel) （64 位）** 
+目前我的 Vivaldi 版本：**7.9.3970.50** 
 
 ## userChrome.js
 

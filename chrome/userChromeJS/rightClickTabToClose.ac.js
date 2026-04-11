@@ -2,7 +2,7 @@
 // @name            rightClickTabToClose.uc.js
 // @description     右键关闭标签页
 // @license         MIT License
-// @compatibility   Vivaldi 6
+// @compatibility   Vivaldi 7.9
 // @version         20241023
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS

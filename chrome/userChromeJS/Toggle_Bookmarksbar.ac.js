@@ -2,7 +2,7 @@
 // @name            Toggle_Bookmarksbar.ac.js
 // @description     双击地址栏显示/隐藏书签栏
 // @license         MIT License
-// @compatibility   Vivaldi 6
+// @compatibility   Vivaldi 7.9
 // @version         20241022
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS

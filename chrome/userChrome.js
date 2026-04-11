@@ -2,7 +2,7 @@
 // @name            userChrome.js
 // @description     Vivaldi Mods Loader
 // @license         MIT License
-// @compatibility   Vivaldi 6.2
+// @compatibility   Vivaldi 7.9
 // @version         0.1.0
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods

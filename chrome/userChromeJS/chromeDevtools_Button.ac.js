@@ -2,7 +2,7 @@
 // @name            chromeDevtools_Button.ac.js
 // @description     侧边栏增加 Chrome DevTools 按钮
 // @license         MIT License
-// @compatibility   Vivaldi 6
+// @compatibility   Vivaldi 7.9
 // @version         20241026
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS

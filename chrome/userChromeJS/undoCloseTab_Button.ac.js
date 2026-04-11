@@ -2,8 +2,8 @@
 // @name            undoCloseTab_Button.ac.js
 // @description     增加撤销关闭标签的功能
 // @license         MIT License
-// @compatibility   Vivaldi 6
-// @version         20241026
+// @compatibility   Vivaldi 7.9
+// @version         20260412
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -33,6 +33,16 @@
                         chrome.sessions.restore(sessions[0].tab.sessionId);
                     else if (sessions.length && sessions[0].window && restoreWindows)
                         chrome.sessions.restore(sessions[0].window.sessionId);
+                    else
+                        // sessions 为空（如刚重启浏览器），从 history 读取最近一条且非当前已打开的
+                        chrome.history.search({ text: '', maxResults: 20 }, items => {
+                            chrome.tabs.query({}, tabs => {
+                                const openUrls = new Set(tabs.map(t => t.url));
+                                const match = items.find(h => h.url && !openUrls.has(h.url));
+                                if (match)
+                                    chrome.tabs.create({ url: match.url });
+                            });
+                        });
                 });
             }
         });
