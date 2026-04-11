@@ -22,6 +22,7 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
         mask-repeat: no-repeat;
         mask-size: 16px;
         mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Ik00IDFhMiAyIDAgMCAwLTIgMmwwIDEwYTIgMiAwIDAgMCAyIDJsOCAwYTIgMiAwIDAgMCAyLTJsMC0xMGEyIDIgMCAwIDAtMi0yTDQgMXptOC43NSAxMi4xNS0uNi42LTguMyAwLS42LS42IDAtMTAuMy42LS42IDguMyAwIC42LjYgMCAxMC4zeiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDUuMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtMTAuMTI1IDguMjUtNC4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWw0LjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPg0KICA8cGF0aCBkPSJtOC4xMjUgMTEuMjUtMi4yNSAwYS42MjUuNjI1IDAgMCAxIDAtMS4yNWwyLjI1IDBhLjYyNS42MjUgMCAwIDEgMCAxLjI1eiIvPjwvc3ZnPg==);
+        background-color: currentColor;
     }
 
     &>.button-icon {
@@ -48,6 +49,7 @@ button:is([title="阅读器视图"], [title="閱讀模式"], [title="Reader View
 }
 
 .sync-and-trash-container button,
+.toggle-trash > button,
 button[name="TabsTrash"] {
     &::before {
         mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSJjdXJyZW50Q29sb3IiPjxwYXRoIGQ9Im04LjM1MiAxMC45OTkgNS40NjYtNS40NjVhLjYyMy42MjMgMCAwIDAtLjAwMS0uODg0LjYyOC42MjggMCAwIDAtLjg4NSAwTDcuOTk4IDkuNTg1bC00LjkzLTQuOTM0YS42MjYuNjI2IDAgMCAwLS44ODUuODg1TDcuNjQ4IDExbC43MDQtLjAwMXoiLz48L3N2Zz4K);
