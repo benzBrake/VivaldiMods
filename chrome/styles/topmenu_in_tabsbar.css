@@ -17,6 +17,7 @@
             margin-right: 0;
             align-items: center;
             height: 100%;
+            padding-right: 0;
 
             &>.vivaldi-horizontal-icon,
             &>.horizontal-menu-pagetitle {
@@ -33,9 +34,11 @@
         }
 
         &:not(:has(#tabs-subcontainer)) {
-            padding-right: calc(140px / var(--uiZoomLevel));
+            padding-right: 0;
 
             & .window-buttongroup {
+                position: relative;
+
                 &>button {
                     height: 100%;
                 }
@@ -64,14 +67,6 @@
                     background-image: linear-gradient(to right, transparent, var(--colorTabBar));
                 }
             }
-        }
-    }
-}
-
-.tabs-top#browser.win:not(.fullscreen, .disable-titlebar) #header:has(>.topmenu) {
-    &:not(:has(#tabs-subcontainer)) {
-        & .window-buttongroup {
-            height: calc(36px + var(--densityGap) * 2)
         }
     }
 }
