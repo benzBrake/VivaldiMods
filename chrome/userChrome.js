@@ -6,6 +6,7 @@
 // @version         0.1.0
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260414 增加全局通知 alert API
 // @note            20260410 增加 ModManager 状态管理与条件注入
 // @note            20241023 增加 $ 函数
 // @note            20240412 Promise 化改造
@@ -24,6 +25,10 @@
     const MODS_STATE_KEY = 'USERCHROME_MODS_STATE';
     const MODS_STATE_VERSION = 1;
     const MODS_CHANGED_EVENT = 'userChrome.mods.changed';
+    const ALERT_STYLE_ID = 'userchrome-alert-style';
+    const ALERT_CONTAINER_ID = 'userchrome-alert-container';
+    const ALERT_DEFAULT_DURATION = 3000;
+    const ALERT_TYPES = ['info', 'success', 'warn', 'error'];
 
     function $(selector, context) {
         context = context || document;
@@ -456,11 +461,30 @@
         return {};
     }
 
+    function sanitizeAlertOptions(message, options) {
+        const normalizedMessage = typeof message === 'string' ? message.trim() : String(message || '').trim();
+        const settings = options && typeof options === 'object' ? options : {};
+        const type = ALERT_TYPES.includes(settings.type) ? settings.type : 'info';
+        const duration = Number.isFinite(settings.duration) ? Math.max(0, settings.duration) : ALERT_DEFAULT_DURATION;
+        return {
+            message: normalizedMessage,
+            title: typeof settings.title === 'string' ? settings.title.trim() : '',
+            type: type,
+            duration: duration,
+            closable: settings.closable !== false,
+            onClick: typeof settings.onClick === 'function' ? settings.onClick : null
+        };
+    }
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
         mods: [],
         styleNodes: {},
+        alertContainer: null,
+        alertMountTimer: null,
+        alertQueue: [],
+        alertCounter: 0,
         state: createDefaultState(),
         storageReady: true,
         async init() {
@@ -769,6 +793,310 @@
             window.dispatchEvent(new CustomEvent(MODS_CHANGED_EVENT, {
                 detail: detail
             }));
+        },
+        ensureAlertStyle() {
+            if (document.getElementById(ALERT_STYLE_ID)) {
+                return true;
+            }
+
+            if (!document.head) {
+                return false;
+            }
+
+            const style = document.createElement('style');
+            style.id = ALERT_STYLE_ID;
+            style.textContent = `
+                #${ALERT_CONTAINER_ID} {
+                    position: fixed;
+                    right: 20px;
+                    bottom: 20px;
+                    z-index: 2147483647;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: stretch;
+                    gap: 10px;
+                    width: min(360px, calc(100vw - 32px));
+                    pointer-events: none;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert {
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                    padding: 12px 40px 12px 14px;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.16));
+                    border-radius: 12px;
+                    background: var(--colorBg, rgba(255, 255, 255, 0.96));
+                    color: var(--colorFg, #222);
+                    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+                    backdrop-filter: blur(10px);
+                    opacity: 0;
+                    transform: translateY(8px);
+                    transition: opacity 160ms ease, transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+                    pointer-events: auto;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert.is-visible {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert.is-closing {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='info'] {
+                    border-left: 4px solid #2563eb;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='success'] {
+                    border-left: 4px solid #2e7d32;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='warn'] {
+                    border-left: 4px solid #b26a00;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='error'] {
+                    border-left: 4px solid #c62828;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable {
+                    cursor: pointer;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable:hover,
+                #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable:focus-visible {
+                    border-color: var(--colorHighlightBg, rgba(37, 99, 235, 0.4));
+                    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+                    outline: none;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert-title {
+                    margin: 0;
+                    font-size: 13px;
+                    font-weight: 700;
+                    line-height: 1.35;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert-message {
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 1.5;
+                    word-break: break-word;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert-close {
+                    position: absolute;
+                    top: 8px;
+                    right: 8px;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border: none;
+                    border-radius: 999px;
+                    background: transparent;
+                    color: inherit;
+                    font-size: 16px;
+                    line-height: 1;
+                    cursor: pointer;
+                    opacity: 0.72;
+                }
+
+                #${ALERT_CONTAINER_ID} .userchrome-alert-close:hover,
+                #${ALERT_CONTAINER_ID} .userchrome-alert-close:focus-visible {
+                    background: rgba(0, 0, 0, 0.08);
+                    opacity: 1;
+                    outline: none;
+                }
+            `;
+            document.head.appendChild(style);
+            return true;
+        },
+        ensureAlertContainer() {
+            if (this.alertContainer && this.alertContainer.isConnected) {
+                return this.alertContainer;
+            }
+
+            if (!this.ensureAlertStyle() || !document.body) {
+                return null;
+            }
+
+            const container = document.createElement('section');
+            container.id = ALERT_CONTAINER_ID;
+            container.setAttribute('aria-live', 'polite');
+            container.setAttribute('aria-atomic', 'false');
+            document.body.appendChild(container);
+            this.alertContainer = container;
+            return container;
+        },
+        scheduleAlertFlush() {
+            if (this.alertMountTimer) {
+                return;
+            }
+
+            this.alertMountTimer = setTimeout(() => {
+                this.alertMountTimer = null;
+                this.flushAlertQueue();
+            }, 120);
+        },
+        flushAlertQueue() {
+            const container = this.ensureAlertContainer();
+            if (!container) {
+                if (this.alertQueue.length) {
+                    this.scheduleAlertFlush();
+                }
+                return;
+            }
+
+            while (this.alertQueue.length) {
+                const notification = this.alertQueue.shift();
+                if (!notification || notification.closed) {
+                    continue;
+                }
+
+                container.appendChild(notification.element);
+                requestAnimationFrame(function () {
+                    notification.element.classList.add('is-visible');
+                });
+            }
+        },
+        closeAlert(notification) {
+            if (!notification || notification.closed) {
+                return;
+            }
+
+            notification.closed = true;
+
+            if (notification.timerId) {
+                clearTimeout(notification.timerId);
+                notification.timerId = null;
+            }
+
+            this.alertQueue = this.alertQueue.filter(function (queued) {
+                return queued !== notification;
+            });
+
+            const teardown = function () {
+                if (notification.element && notification.element.parentNode) {
+                    notification.element.parentNode.removeChild(notification.element);
+                }
+            };
+
+            if (!notification.element || !notification.element.isConnected) {
+                teardown();
+                return;
+            }
+
+            notification.element.classList.remove('is-visible');
+            notification.element.classList.add('is-closing');
+            setTimeout(teardown, 180);
+        },
+        createAlertElement(notification) {
+            const element = document.createElement('article');
+            element.className = 'userchrome-alert';
+            element.dataset.type = notification.type;
+            element.setAttribute('role', 'status');
+
+            if (notification.onClick) {
+                element.classList.add('is-clickable');
+                element.setAttribute('role', 'button');
+                element.tabIndex = 0;
+            }
+
+            if (notification.title) {
+                element.appendChild(this.createElement('p', {
+                    class: 'userchrome-alert-title',
+                    innerText: notification.title
+                }));
+            }
+
+            element.appendChild(this.createElement('p', {
+                class: 'userchrome-alert-message',
+                innerText: notification.message
+            }));
+
+            if (notification.closable) {
+                element.appendChild(this.createElement('button', {
+                    class: 'userchrome-alert-close',
+                    type: 'button',
+                    'aria-label': '关闭通知',
+                    innerText: '×',
+                    onclick: (event) => {
+                        event.stopPropagation();
+                        this.closeAlert(notification);
+                    }
+                }));
+            }
+
+            if (notification.onClick) {
+                const triggerClick = (event) => {
+                    try {
+                        notification.onClick(event, notification);
+                    } catch (error) {
+                        console.error('[userChrome.js] Alert onClick failed.', error);
+                    }
+                    this.closeAlert(notification);
+                };
+
+                element.addEventListener('click', function (event) {
+                    if (event.target && event.target.closest('.userchrome-alert-close')) {
+                        return;
+                    }
+                    triggerClick(event);
+                });
+
+                element.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    event.preventDefault();
+                    triggerClick(event);
+                });
+            }
+
+            return element;
+        },
+        alert(message, options) {
+            const settings = sanitizeAlertOptions(message, options);
+            if (!settings.message) {
+                return null;
+            }
+
+            const notification = {
+                id: ++this.alertCounter,
+                title: settings.title,
+                message: settings.message,
+                type: settings.type,
+                duration: settings.duration,
+                closable: settings.closable,
+                onClick: settings.onClick,
+                timerId: null,
+                closed: false,
+                element: null
+            };
+
+            notification.close = () => {
+                this.closeAlert(notification);
+            };
+
+            notification.element = this.createAlertElement(notification);
+            this.alertQueue.push(notification);
+            this.flushAlertQueue();
+
+            if (!notification.element.isConnected) {
+                this.scheduleAlertFlush();
+            }
+
+            if (notification.duration > 0) {
+                notification.timerId = setTimeout(() => {
+                    this.closeAlert(notification);
+                }, notification.duration);
+            }
+
+            return notification;
         },
         createElement(tag, attrs) {
             const el = document.createElement(tag);

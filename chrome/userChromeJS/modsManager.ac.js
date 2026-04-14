@@ -3,7 +3,7 @@
 // @description     Vivaldi Mod 管理器，统一管理 CSS / JS 的启用状态
 // @license         MIT License
 // @compatibility   Vivaldi 7.9
-// @version         20260410
+// @version         20260414
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -307,6 +307,14 @@
         }
     }
 
+    function notify(message, options) {
+        const api = getManagerApi();
+        if (!api || typeof api.alert !== 'function' || !message) {
+            return;
+        }
+        api.alert(message, options);
+    }
+
     function getVisibleMods() {
         const api = getManagerApi();
         if (!api || typeof api.getMods !== 'function') {
@@ -435,6 +443,9 @@
         const api = getManagerApi();
         if (!api || typeof api.setModEnabled !== 'function') {
             setStatus('当前无法访问 Mod 管理接口。', 'warn');
+            notify('当前无法访问 Mod 管理接口。', {
+                type: 'error'
+            });
             return;
         }
 
@@ -446,23 +457,41 @@
             const result = await api.setModEnabled(id, enabled);
             if (!result) {
                 setStatus('没有找到对应的 Mod。', 'warn');
+                notify('没有找到对应的 Mod。', {
+                    type: 'warn'
+                });
                 return;
             }
 
             renderList();
 
+            let statusMessage = '';
+            let statusTone = 'info';
             if (result.type === 'css') {
-                setStatus((result.enabled ? '已启用 ' : '已禁用 ') + id + '，当前窗口已立即更新。');
+                statusMessage = (result.enabled ? '已启用 ' : '已禁用 ') + id + '，当前窗口已立即更新。';
             } else {
-                setStatus((result.enabled ? '已启用 ' : '已禁用 ') + id + '，重启 Vivaldi 后生效。', 'warn');
+                statusMessage = (result.enabled ? '已启用 ' : '已禁用 ') + id + '，重启 Vivaldi 后生效。';
+                statusTone = 'warn';
             }
+            setStatus(statusMessage, statusTone === 'warn' ? 'warn' : undefined);
+            notify(statusMessage, {
+                type: statusTone
+            });
 
             if (!result.persisted) {
                 setStatus('状态已在当前会话更新，但保存失败，重启后可能恢复默认。', 'warn');
+                notify('状态已在当前会话更新，但保存失败，重启后可能恢复默认。', {
+                    type: 'warn',
+                    duration: 5000
+                });
             }
         } catch (error) {
             console.warn('[modsManager] Failed to toggle mod.', error);
             setStatus('切换 Mod 失败，请查看控制台日志。', 'warn');
+            notify('切换 Mod 失败，请查看控制台日志。', {
+                type: 'error',
+                duration: 5000
+            });
         } finally {
             if (toggle) {
                 toggle.disabled = false;
@@ -474,6 +503,9 @@
         const api = getManagerApi();
         if (!api || typeof api.resetModState !== 'function') {
             setStatus('当前无法重置 Mod 状态。', 'warn');
+            notify('当前无法重置 Mod 状态。', {
+                type: 'error'
+            });
             return;
         }
 
@@ -484,14 +516,25 @@
         try {
             const result = await api.resetModState();
             renderList();
+            let statusMessage = '';
+            let statusTone = 'info';
             if (result && result.restartRequired) {
-                setStatus('已恢复默认。CSS 已立即恢复，JS 需要重启 Vivaldi 才会重新注入。', 'warn');
+                statusMessage = '已恢复默认。CSS 已立即恢复，JS 需要重启 Vivaldi 才会重新注入。';
+                statusTone = 'warn';
             } else {
-                setStatus('已恢复默认，当前窗口中的 CSS 也已同步恢复。');
+                statusMessage = '已恢复默认，当前窗口中的 CSS 也已同步恢复。';
             }
+            setStatus(statusMessage, statusTone === 'warn' ? 'warn' : undefined);
+            notify(statusMessage, {
+                type: statusTone
+            });
         } catch (error) {
             console.warn('[modsManager] Failed to reset mod state.', error);
             setStatus('恢复默认失败，请查看控制台日志。', 'warn');
+            notify('恢复默认失败，请查看控制台日志。', {
+                type: 'error',
+                duration: 5000
+            });
         } finally {
             if (state.resetButton) {
                 state.resetButton.disabled = false;
