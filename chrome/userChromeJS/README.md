@@ -6,7 +6,7 @@
 | chromeDevtools_Button.ac.js | 侧边栏 DevTools 按钮：优先连 `localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
 | global-media-controls.ac.js | 侧边栏增加一个全局播放控制面板             |
 | modsManager.ac.js           | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层 |
-| rightClickTabToClose.ac.js  | 右击关闭标签页                             |
+| rightClickTabToClose.ac.js  | 右击关闭标签页；最后一页会遵循 Vivaldi 的新标签页设置 |
 | Toggle_Bookmarksbar.ac.js   | 双击地址栏显示/隐藏书签栏                  |
 | undoCloseTab_Button.ac.js   | 在垃圾桶旁边增加一个撤销关闭标签页的按钮   |
 
