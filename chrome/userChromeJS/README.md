@@ -8,7 +8,7 @@
 | modsManager.ac.js           | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层 |
 | rightClickTabToClose.ac.js  | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑 |
 | Toggle_Bookmarksbar.ac.js   | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏） |
-| undoCloseTab_Button.ac.js   | 在垃圾桶旁边增加一个撤销关闭标签页的按钮   |
+| undoCloseTab_Button.ac.js   | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建 |
 
 ## userChrome.js 公共 API
 
