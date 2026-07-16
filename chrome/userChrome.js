@@ -233,6 +233,15 @@
         return normalizePath(path).replace(new RegExp('^' + MODS_DIRECTORY_NAME + '/'), '');
     }
 
+    function compareEntries(first, second) {
+        const firstName = String(first.name || '').toLowerCase();
+        const secondName = String(second.name || '').toLowerCase();
+        return firstName.localeCompare(secondName, 'en', {
+            numeric: true,
+            sensitivity: 'base'
+        });
+    }
+
     function isStorageAvailable() {
         return !!(chrome && chrome.storage && chrome.storage.local);
     }
@@ -481,6 +490,7 @@
         styles: [],
         mods: [],
         styleNodes: {},
+        injectionPromise: null,
         alertContainer: null,
         alertMountTimer: null,
         alertQueue: [],
@@ -505,14 +515,16 @@
                 waitForCondition(function () {
                     return document.head && document.body;
                 }, function () {
-                    window.userChrome_js.injectMods();
+                    window.userChrome_js.injectMods().catch(function (error) {
+                        console.error('[userChrome.js] Mod injection failed.', error);
+                    });
                 }, 300);
             } catch (error) {
                 console.error('[userChrome.js] Initialization failed.', error);
             }
         },
         async findModsDirectory(directory) {
-            const entries = await readEntriesAsync(directory);
+            const entries = (await readEntriesAsync(directory)).sort(compareEntries);
             for (const entry of entries) {
                 if (entry.isDirectory && entry.name === MODS_DIRECTORY_NAME) {
                     return entry;
@@ -522,7 +534,7 @@
         },
         async listMods(directory) {
             console.log('getMods: ' + normalizePath(directory.fullPath));
-            const entries = await readEntriesAsync(directory);
+            const entries = (await readEntriesAsync(directory)).sort(compareEntries);
 
             for (const entry of entries) {
                 if (entry.isDirectory) {
@@ -570,7 +582,8 @@
                 homepageURL: metadata.homepageURL || '',
                 notes: Array.isArray(metadata.notes) ? metadata.notes.slice() : [],
                 enabled: true,
-                loaded: false
+                loaded: false,
+                loading: false
             };
 
             console.log('addMod(' + type.toUpperCase() + '): ' + modMeta.path);
@@ -637,33 +650,65 @@
             }
         },
         injectMods() {
+            if (this.injectionPromise) {
+                return this.injectionPromise;
+            }
+
+            this.injectionPromise = this.runInjection().finally(() => {
+                this.injectionPromise = null;
+            });
+            return this.injectionPromise;
+        },
+        async runInjection() {
             const container = document.body || document.documentElement;
             if (!container) {
                 console.warn('[userChrome.js] Injection container is unavailable.');
                 return;
             }
 
-            this.scripts.forEach((mod) => {
-                if (!mod.enabled || mod.loaded) {
-                    return;
-                }
-
-                console.log('Injecting script: ' + mod.relativePath);
-                const script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = mod.path;
-                script.dataset.userchromeId = mod.id;
-                script.onload = function () {
-                    mod.loaded = true;
-                };
-                container.appendChild(script);
-            });
-
             this.styles.forEach((mod) => {
                 if (!mod.enabled) {
                     return;
                 }
                 this.enableStyleMod(mod);
+            });
+
+            for (const mod of this.scripts) {
+                await this.enableScriptMod(mod, container);
+            }
+        },
+        enableScriptMod(mod, container) {
+            if (!mod.enabled || mod.loaded || mod.loading) {
+                return Promise.resolve(mod.loaded);
+            }
+
+            console.log('Injecting script: ' + mod.relativePath);
+            mod.loading = true;
+
+            return new Promise(function (resolve) {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.async = false;
+                script.src = mod.path;
+                script.dataset.userchromeId = mod.id;
+                script.onload = function () {
+                    mod.loading = false;
+                    mod.loaded = true;
+                    resolve(true);
+                };
+                script.onerror = function () {
+                    mod.loading = false;
+                    console.error('[userChrome.js] Failed to load script:', mod.relativePath);
+                    resolve(false);
+                };
+
+                try {
+                    container.appendChild(script);
+                } catch (error) {
+                    mod.loading = false;
+                    console.error('[userChrome.js] Failed to inject script:', mod.relativePath, error);
+                    resolve(false);
+                }
             });
         },
         enableStyleMod(mod) {
