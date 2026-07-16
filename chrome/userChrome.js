@@ -491,6 +491,8 @@
         mods: [],
         styleNodes: {},
         injectionPromise: null,
+        addedNodeCallbacks: new Set(),
+        addedNodeObserver: null,
         alertContainer: null,
         alertMountTimer: null,
         alertQueue: [],
@@ -838,6 +840,62 @@
             window.dispatchEvent(new CustomEvent(MODS_CHANGED_EVENT, {
                 detail: detail
             }));
+        },
+        ensureAddedNodeObserver() {
+            if (this.addedNodeObserver) {
+                return true;
+            }
+
+            const root = document.documentElement;
+            if (!root || typeof MutationObserver !== 'function') {
+                return false;
+            }
+
+            this.addedNodeObserver = new MutationObserver((records) => {
+                const callbacks = Array.from(this.addedNodeCallbacks);
+                records.forEach((record) => {
+                    record.addedNodes.forEach((node) => {
+                        if (node.nodeType !== 1) {
+                            return;
+                        }
+
+                        callbacks.forEach((callback) => {
+                            try {
+                                callback(node, record);
+                            } catch (error) {
+                                console.error('[userChrome.js] Added-node callback failed.', error);
+                            }
+                        });
+                    });
+                });
+            });
+            this.addedNodeObserver.observe(root, {
+                childList: true,
+                subtree: true
+            });
+            return true;
+        },
+        observeAddedNodes(callback) {
+            if (typeof callback !== 'function') {
+                throw new TypeError('Added-node callback must be a function');
+            }
+
+            this.addedNodeCallbacks.add(callback);
+            if (!this.ensureAddedNodeObserver()) {
+                this.addedNodeCallbacks.delete(callback);
+                console.warn('[userChrome.js] MutationObserver is unavailable.');
+                return function () {};
+            }
+
+            return () => {
+                this.addedNodeCallbacks.delete(callback);
+                if (this.addedNodeCallbacks.size || !this.addedNodeObserver) {
+                    return;
+                }
+
+                this.addedNodeObserver.disconnect();
+                this.addedNodeObserver = null;
+            };
         },
         ensureAlertStyle() {
             if (document.getElementById(ALERT_STYLE_ID)) {
@@ -1209,13 +1267,6 @@
             readNextBatch();
         });
     }
-
-    const appendChild = Element.prototype.appendChild;
-    Element.prototype.appendChild = function () {
-        const customEvent = new CustomEvent('appendChild', { detail: arguments });
-        document.dispatchEvent(customEvent);
-        return appendChild.apply(this, arguments);
-    };
 
     window.userChrome_js.init();
 })();

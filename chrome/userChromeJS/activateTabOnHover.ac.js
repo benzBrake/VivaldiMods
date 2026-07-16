@@ -76,8 +76,7 @@
   $('div.tab-header').on('mouseover', onHover);
 
   // 调整标签位置后重新绑定事件
-  $(document).on('appendChild', function (event) {
-    const insertElement = event.detail[0];
+  userChrome_js.observeAddedNodes(function (insertElement) {
     if (!insertElement) return;
     if (insertElement.tagName !== "DIV") return;
     if (insertElement.classList.contains("tab-header")

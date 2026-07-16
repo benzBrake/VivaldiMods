@@ -28,6 +28,25 @@
 $('#tabs-container .tab-strip').on('contextmenu', '[role="tab"]', closeTab);
 ```
 
+### `window.userChrome_js.observeAddedNodes(callback)`
+
+监听 Vivaldi UI 中新增的元素。内部使用一个共享的 `MutationObserver`，不会改写浏览器的 DOM 原型。
+
+- `callback(element, mutationRecord)`：每个新增元素在插入 DOM 后调用一次
+- 返回取消监听的函数；不再需要监听时可调用它释放观察器
+
+示例：
+
+```js
+const stopObserving = userChrome_js.observeAddedNodes((element) => {
+    if (element.matches('.tab-header')) {
+        element.addEventListener('mouseover', onHover);
+    }
+});
+
+// stopObserving();
+```
+
 ### `window.userChrome_js.alert(message, options?)`
 
 在浏览器右下角显示非阻塞通知。
