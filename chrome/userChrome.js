@@ -29,6 +29,32 @@
     const ALERT_CONTAINER_ID = 'userchrome-alert-container';
     const ALERT_DEFAULT_DURATION = 3000;
     const ALERT_TYPES = ['info', 'success', 'warn', 'error'];
+    const delegatedEventListeners = new WeakMap();
+
+    function addDelegatedEventListener(element, event, selector, handler, listener) {
+        const listeners = delegatedEventListeners.get(element) || [];
+        listeners.push({ event, selector, handler, listener });
+        delegatedEventListeners.set(element, listeners);
+    }
+
+    function removeDelegatedEventListeners(element, event, selector, handler) {
+        const listeners = delegatedEventListeners.get(element) || [];
+        const remainingListeners = [];
+
+        listeners.forEach(function (listenerInfo) {
+            if (listenerInfo.event === event && listenerInfo.selector === selector && listenerInfo.handler === handler) {
+                element.removeEventListener(event, listenerInfo.listener);
+            } else {
+                remainingListeners.push(listenerInfo);
+            }
+        });
+
+        if (remainingListeners.length) {
+            delegatedEventListeners.set(element, remainingListeners);
+        } else {
+            delegatedEventListeners.delete(element);
+        }
+    }
 
     function $(selector, context) {
         context = context || document;
@@ -128,7 +154,8 @@
     $.prototype.on = function (event, selectorOrHandler, handler) {
         if (typeof selectorOrHandler === 'string' && typeof handler === 'function') {
             return this.each(function () {
-                this.addEventListener(event, function (e) {
+                const element = this;
+                const delegatedHandler = function (e) {
                     const potentialElements = this.querySelectorAll(selectorOrHandler);
                     let target = e.target;
                     while (target && target !== this) {
@@ -138,7 +165,9 @@
                         }
                         target = target.parentNode;
                     }
-                });
+                };
+                element.addEventListener(event, delegatedHandler);
+                addDelegatedEventListener(element, event, selectorOrHandler, handler, delegatedHandler);
             });
         }
 
@@ -162,18 +191,7 @@
             }
 
             if (typeof selectorOrHandler === 'string' && typeof handler === 'function') {
-                const delegatedHandler = function (e) {
-                    const potentialElements = element.querySelectorAll(selectorOrHandler);
-                    let target = e.target;
-                    while (target && target !== element) {
-                        if ([...potentialElements].includes(target)) {
-                            handler.call(target, e);
-                            break;
-                        }
-                        target = target.parentNode;
-                    }
-                };
-                element.removeEventListener(event, delegatedHandler);
+                removeDelegatedEventListeners(element, event, selectorOrHandler, handler);
             } else if (typeof selectorOrHandler === 'function') {
                 element.removeEventListener(event, selectorOrHandler);
             } else {

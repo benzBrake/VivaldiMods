@@ -28,6 +28,18 @@
 $('#tabs-container .tab-strip').on('contextmenu', '[role="tab"]', closeTab);
 ```
 
+委托事件解绑时，需传入注册时相同的事件名、选择器和处理函数引用：
+
+```js
+const closeTab = function (event) {
+    // ...
+};
+const tabStrip = $('#tabs-container .tab-strip');
+
+tabStrip.on('contextmenu', '[role="tab"]', closeTab);
+tabStrip.off('contextmenu', '[role="tab"]', closeTab);
+```
+
 ### `window.userChrome_js.observeAddedNodes(callback)`
 
 监听 Vivaldi UI 中新增的元素。内部使用一个共享的 `MutationObserver`，不会改写浏览器的 DOM 原型。
