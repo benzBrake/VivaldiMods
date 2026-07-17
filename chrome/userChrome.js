@@ -2,10 +2,11 @@
 // @name            userChrome.js
 // @description     Vivaldi Mods Loader
 // @license         MIT License
-// @compatibility   Vivaldi 7.9
+// @compatibility   Vivaldi 8.1
 // @version         0.1.0
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260717 增加自绘弹出菜单 menu API
 // @note            20260414 增加全局通知 alert API
 // @note            20260410 增加 ModManager 状态管理与条件注入
 // @note            20241023 增加 $ 函数
@@ -29,6 +30,9 @@
     const ALERT_CONTAINER_ID = 'userchrome-alert-container';
     const ALERT_DEFAULT_DURATION = 3000;
     const ALERT_TYPES = ['info', 'success', 'warn', 'error'];
+    const MENU_STYLE_ID = 'userchrome-menu-style';
+    const MENU_ROOT_ID = 'userchrome-menu-root';
+    const MENU_VIEWPORT_MARGIN = 8;
     const delegatedEventListeners = new WeakMap();
 
     function addDelegatedEventListener(element, event, selector, handler, listener) {
@@ -503,6 +507,489 @@
         };
     }
 
+    function createMenuApi() {
+        const state = {
+            root: null,
+            current: null
+        };
+
+        function ensureStyle() {
+            if (document.getElementById(MENU_STYLE_ID) || !document.head) {
+                return !!document.getElementById(MENU_STYLE_ID);
+            }
+
+            const style = document.createElement('style');
+            style.id = MENU_STYLE_ID;
+            style.textContent = `
+                #${MENU_ROOT_ID} {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 2147483646;
+                    pointer-events: none;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu {
+                    position: fixed;
+                    display: flex;
+                    flex-direction: column;
+                    box-sizing: border-box;
+                    min-width: min(192px, calc(100vw - ${MENU_VIEWPORT_MARGIN * 2}px));
+                    max-width: min(360px, calc(100vw - ${MENU_VIEWPORT_MARGIN * 2}px));
+                    max-height: min(480px, calc(100vh - ${MENU_VIEWPORT_MARGIN * 2}px));
+                    padding: 4px;
+                    overflow: auto;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
+                    border-radius: 6px;
+                    background: var(--colorBg, #fff);
+                    color: var(--colorFg, #222);
+                    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+                    pointer-events: auto;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-item {
+                    display: grid;
+                    grid-template-columns: 16px minmax(0, 1fr) auto;
+                    column-gap: 8px;
+                    align-items: center;
+                    width: 100%;
+                    min-height: 30px;
+                    padding: 5px 8px;
+                    border: 0;
+                    border-radius: 4px;
+                    background: transparent;
+                    color: inherit;
+                    font: inherit;
+                    font-size: 13px;
+                    line-height: 1.35;
+                    text-align: left;
+                    cursor: pointer;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-item:hover,
+                #${MENU_ROOT_ID} .userchrome-menu-item:focus-visible {
+                    background: var(--colorHighlightBg, rgba(0, 102, 204, 0.16));
+                    color: var(--colorHighlightFg, inherit);
+                    outline: none;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-item:disabled {
+                    color: var(--colorFgFaded, rgba(34, 34, 34, 0.45));
+                    cursor: default;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-item:disabled:hover {
+                    background: transparent;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-check {
+                    width: 16px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    line-height: 1;
+                    text-align: center;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-label {
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-shortcut {
+                    margin-left: 18px;
+                    color: var(--colorFgFaded, rgba(34, 34, 34, 0.65));
+                    font-size: 12px;
+                    white-space: nowrap;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-separator {
+                    height: 1px;
+                    margin: 4px 6px;
+                    background: var(--colorBorder, rgba(0, 0, 0, 0.16));
+                }
+            `;
+            document.head.appendChild(style);
+            return true;
+        }
+
+        function ensureRoot() {
+            if (state.root && state.root.isConnected) {
+                return state.root;
+            }
+
+            if (!ensureStyle() || !document.body) {
+                return null;
+            }
+
+            const root = document.createElement('div');
+            root.id = MENU_ROOT_ID;
+            document.body.appendChild(root);
+            state.root = root;
+            return root;
+        }
+
+        function normalizeOptions(options) {
+            if (!options || typeof options !== 'object') {
+                throw new TypeError('Menu options must be an object.');
+            }
+
+            const hasAnchor = options.anchor instanceof HTMLElement;
+            const position = options.position;
+            const hasPosition = Boolean(position
+                && Number.isFinite(position.x)
+                && Number.isFinite(position.y));
+            if (hasAnchor === hasPosition) {
+                throw new TypeError('Menu requires exactly one anchor or position option.');
+            }
+
+            if (!Array.isArray(options.items)) {
+                throw new TypeError('Menu items must be an array.');
+            }
+
+            const items = options.items.map(function (item, index) {
+                if (!item || typeof item !== 'object') {
+                    throw new TypeError('Menu item at index ' + index + ' must be an object.');
+                }
+
+                if (item.type === 'separator') {
+                    return { type: 'separator' };
+                }
+
+                if (typeof item.label !== 'string') {
+                    throw new TypeError('Menu item at index ' + index + ' requires a string label.');
+                }
+
+                return {
+                    id: typeof item.id === 'string' ? item.id : '',
+                    type: item.type === 'checkbox' ? 'checkbox' : 'item',
+                    label: item.label,
+                    checked: item.type === 'checkbox' && item.checked === true,
+                    disabled: item.disabled === true,
+                    shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
+                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
+                };
+            });
+
+            if (!items.some(function (item) {
+                return item.type !== 'separator';
+            })) {
+                throw new TypeError('Menu requires at least one non-separator item.');
+            }
+
+            return {
+                anchor: hasAnchor ? options.anchor : null,
+                position: hasPosition ? { x: position.x, y: position.y } : null,
+                items: items,
+                ariaLabel: typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
+                    ? options.ariaLabel.trim()
+                    : '菜单',
+                restoreFocus: options.restoreFocus instanceof HTMLElement
+                    ? options.restoreFocus
+                    : (hasAnchor ? options.anchor : null),
+                onClose: typeof options.onClose === 'function' ? options.onClose : null
+            };
+        }
+
+        function getFocusableItems(current) {
+            return current.itemElements.filter(function (entry) {
+                return !entry.item.disabled;
+            });
+        }
+
+        function focusItem(current, index) {
+            const focusableItems = getFocusableItems(current);
+            if (!focusableItems.length) {
+                return;
+            }
+
+            const normalizedIndex = ((index % focusableItems.length) + focusableItems.length) % focusableItems.length;
+            current.focusedIndex = normalizedIndex;
+            focusableItems[normalizedIndex].element.focus();
+        }
+
+        function restoreFocus(current) {
+            const target = current.options.restoreFocus;
+            if (target && target.isConnected && typeof target.focus === 'function') {
+                target.focus({ preventScroll: true });
+            }
+        }
+
+        function invokeSelect(current, entry, event) {
+            if (entry.item.disabled || !state.current || state.current !== current) {
+                return;
+            }
+
+            close('select');
+            if (!entry.item.onSelect) {
+                return;
+            }
+
+            try {
+                Promise.resolve(entry.item.onSelect({
+                    id: entry.item.id,
+                    checked: entry.item.type === 'checkbox' ? !entry.item.checked : entry.item.checked,
+                    previousChecked: entry.item.checked,
+                    event: event
+                })).catch(function (error) {
+                    console.error('[userChrome.menu] Item callback failed.', error);
+                });
+            } catch (error) {
+                console.error('[userChrome.menu] Item callback failed.', error);
+            }
+        }
+
+        function positionMenu(current) {
+            if (!current || !current.element.isConnected) {
+                return;
+            }
+
+            if (current.options.anchor && !current.options.anchor.isConnected) {
+                close('anchor-removed', false);
+                return;
+            }
+
+            const menu = current.element;
+            menu.style.visibility = 'hidden';
+            menu.style.left = '0px';
+            menu.style.top = '0px';
+
+            const rect = menu.getBoundingClientRect();
+            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+            let x;
+            let y;
+
+            if (current.options.anchor) {
+                const anchorRect = current.options.anchor.getBoundingClientRect();
+                x = anchorRect.left;
+                y = anchorRect.bottom;
+                if (y + rect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
+                    y = anchorRect.top - rect.height;
+                }
+                if (x + rect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
+                    x = anchorRect.right - rect.width;
+                }
+            } else {
+                x = current.options.position.x;
+                y = current.options.position.y;
+                if (x + rect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
+                    x -= rect.width;
+                }
+                if (y + rect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
+                    y -= rect.height;
+                }
+            }
+
+            x = Math.max(MENU_VIEWPORT_MARGIN, Math.min(x, viewportWidth - rect.width - MENU_VIEWPORT_MARGIN));
+            y = Math.max(MENU_VIEWPORT_MARGIN, Math.min(y, viewportHeight - rect.height - MENU_VIEWPORT_MARGIN));
+            menu.style.left = Math.round(x) + 'px';
+            menu.style.top = Math.round(y) + 'px';
+            menu.style.visibility = '';
+        }
+
+        function handleKeydown(event) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            const focusableItems = getFocusableItems(current);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close('escape');
+                return;
+            }
+            if (event.key === 'Tab') {
+                close('tab');
+                return;
+            }
+            if (!focusableItems.length) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                focusItem(current, current.focusedIndex + 1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                focusItem(current, current.focusedIndex - 1);
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                focusItem(current, 0);
+            } else if (event.key === 'End') {
+                event.preventDefault();
+                focusItem(current, focusableItems.length - 1);
+            }
+        }
+
+        function handleOutsideInteraction(event) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : null;
+            if (eventPath ? eventPath.includes(current.element) : current.element.contains(event.target)) {
+                return;
+            }
+
+            close('outside', false);
+        }
+
+        function close(reason, shouldRestoreFocus) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            state.current = null;
+            document.removeEventListener('keydown', handleKeydown, true);
+            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
+            window.removeEventListener('mousedown', handleOutsideInteraction, true);
+            window.removeEventListener('resize', current.reposition);
+            window.removeEventListener('scroll', current.reposition, true);
+            if (current.anchorObserver) {
+                current.anchorObserver.disconnect();
+            }
+            current.element.remove();
+
+            if (shouldRestoreFocus !== false) {
+                restoreFocus(current);
+            }
+
+            if (current.options.onClose) {
+                try {
+                    current.options.onClose(reason || 'close');
+                } catch (error) {
+                    console.error('[userChrome.menu] Close callback failed.', error);
+                }
+            }
+        }
+
+        function open(options) {
+            const normalizedOptions = normalizeOptions(options);
+            const root = ensureRoot();
+            if (!root) {
+                return null;
+            }
+
+            close('replace', false);
+
+            const menu = document.createElement('div');
+            menu.className = 'userchrome-menu';
+            menu.setAttribute('role', 'menu');
+            menu.setAttribute('aria-label', normalizedOptions.ariaLabel);
+
+            const current = {
+                options: normalizedOptions,
+                element: menu,
+                itemElements: [],
+                focusedIndex: 0,
+                reposition: null,
+                anchorObserver: null
+            };
+
+            normalizedOptions.items.forEach(function (item) {
+                if (item.type === 'separator') {
+                    const separator = document.createElement('div');
+                    separator.className = 'userchrome-menu-separator';
+                    separator.setAttribute('role', 'separator');
+                    menu.appendChild(separator);
+                    return;
+                }
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'userchrome-menu-item';
+                button.setAttribute('role', item.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem');
+                button.tabIndex = -1;
+                button.disabled = item.disabled;
+                if (item.type === 'checkbox') {
+                    button.setAttribute('aria-checked', String(item.checked));
+                }
+                if (item.disabled) {
+                    button.setAttribute('aria-disabled', 'true');
+                }
+
+                const check = document.createElement('span');
+                check.className = 'userchrome-menu-check';
+                check.setAttribute('aria-hidden', 'true');
+                check.textContent = item.type === 'checkbox' && item.checked ? '✓' : '';
+                const label = document.createElement('span');
+                label.className = 'userchrome-menu-label';
+                label.textContent = item.label;
+                const shortcut = document.createElement('span');
+                shortcut.className = 'userchrome-menu-shortcut';
+                shortcut.textContent = item.shortcut;
+
+                button.appendChild(check);
+                button.appendChild(label);
+                button.appendChild(shortcut);
+                const entry = { item: item, element: button };
+                button.addEventListener('focus', function () {
+                    const focusableItems = getFocusableItems(current);
+                    current.focusedIndex = focusableItems.indexOf(entry);
+                });
+                button.addEventListener('click', function (event) {
+                    invokeSelect(current, entry, event);
+                });
+                menu.appendChild(button);
+                current.itemElements.push(entry);
+            });
+
+            current.reposition = function () {
+                positionMenu(current);
+            };
+            root.appendChild(menu);
+            state.current = current;
+            if (current.options.anchor && typeof MutationObserver === 'function') {
+                current.anchorObserver = new MutationObserver(function () {
+                    if (state.current !== current) {
+                        current.anchorObserver.disconnect();
+                        return;
+                    }
+                    if (!current.options.anchor.isConnected) {
+                        close('anchor-removed', false);
+                    }
+                });
+                current.anchorObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+            document.addEventListener('keydown', handleKeydown, true);
+            // 在 window 捕获阶段监听，避免 Vivaldi UI 的 document 事件处理拦截菜单外点击。
+            window.addEventListener('pointerdown', handleOutsideInteraction, true);
+            // 兼容未派发 PointerEvent 的鼠标输入环境；重复事件会因菜单已关闭而被忽略。
+            window.addEventListener('mousedown', handleOutsideInteraction, true);
+            window.addEventListener('resize', current.reposition);
+            window.addEventListener('scroll', current.reposition, true);
+            positionMenu(current);
+
+            requestAnimationFrame(function () {
+                if (state.current === current) {
+                    focusItem(current, 0);
+                }
+            });
+
+            return {
+                close: function (reason) {
+                    if (state.current === current) {
+                        close(reason || 'close');
+                    }
+                }
+            };
+        }
+
+        return {
+            open: open,
+            close: function (reason) {
+                close(reason || 'close');
+            }
+        };
+    }
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
@@ -515,6 +1002,7 @@
         alertMountTimer: null,
         alertQueue: [],
         alertCounter: 0,
+        menu: createMenuApi(),
         state: createDefaultState(),
         storageReady: true,
         async init() {

@@ -91,6 +91,52 @@ userChrome_js.alert('点击打开 Mod 管理器', {
 });
 ```
 
+### `window.userChrome_js.menu.open(options)`
+
+打开单层自绘菜单。组件使用标准 DOM 与 WAI-ARIA 语义实现，交互模型参考 Firefox 的菜单行为，但不依赖 Firefox 的 XUL `menu`、`menuitem` 或 `menupopup` 标签，因此可直接用于 Vivaldi 内置界面。
+
+- 必须提供且只能提供一个定位方式：`anchor: HTMLElement`（触发元素下方）或 `position: { x, y }`（鼠标客户端坐标）
+- `items` 至少包含一个非分隔项，支持普通项 `{ id, label, disabled?, shortcut?, onSelect }`、勾选项 `{ id, type: 'checkbox', label, checked, disabled?, shortcut?, onSelect }` 和分隔项 `{ type: 'separator' }`
+- 可选 `ariaLabel`、`restoreFocus`、`onClose(reason)`；返回值提供 `close(reason?)`
+- 选中菜单项时会先关闭菜单并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示
+- 支持在 `window` 捕获阶段检测菜单外的指针或鼠标点击并关闭菜单；锚点被移除时会自动关闭。支持 `Escape`、`Tab` 关闭（并保持正常的焦点前进/后退），以及方向键、`Home` / `End`、`Enter` / `Space` 导航
+
+锚定菜单示例：
+
+```js
+userChrome_js.menu.open({
+    anchor: button,
+    ariaLabel: '工具菜单',
+    items: [
+        {
+            id: 'refresh',
+            label: '刷新',
+            shortcut: 'Ctrl+R',
+            onSelect() {
+                window.location.reload();
+            }
+        },
+        { type: 'separator' },
+        { id: 'unavailable', label: '不可用操作', disabled: true }
+    ]
+});
+```
+
+右键菜单示例：
+
+```js
+element.addEventListener('contextmenu', function (event) {
+    event.preventDefault();
+    userChrome_js.menu.open({
+        position: { x: event.clientX, y: event.clientY },
+        ariaLabel: '上下文菜单',
+        items: [{ id: 'copy', label: '复制', onSelect: copyValue }]
+    });
+});
+```
+
+首版不支持子菜单、HTML 标签、单项加载状态或快捷键分发；需要变化的勾选状态应由调用脚本保存，并在下次打开菜单时重新传入 `checked`。
+
 ### `window.userChrome_js.createElement(tag, attrs)`
 
 用于快速创建 DOM 元素。
