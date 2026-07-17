@@ -6,9 +6,12 @@
 | chromeDevtools_Button.ac.js | 侧边栏 DevTools 按钮：优先连 `localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
 | global-media-controls.ac.js | 侧边栏增加一个全局播放控制面板             |
 | modsManager.ac.js           | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层 |
+| rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容 |
 | rightClickTabToClose.ac.js  | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑 |
 | Toggle_Bookmarksbar.ac.js   | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏） |
 | undoCloseTab_Button.ac.js   | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建 |
+
+`rightClickOpenClipboard.ac.js` 面向 Vivaldi 8.1 的 `.button-toolbar.newtab` DOM 结构，使用 `paste` 事件读取剪贴板，并依赖 `chrome.tabs`、`vivaldi.searchEngines` 及标签 `vivExtData` 创建和导航标签页。脚本会保留当前工作区；从标签堆叠区域新增时还会继承当前堆叠归属。
 
 ## userChrome.js 公共 API
 
