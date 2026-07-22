@@ -5,6 +5,7 @@
 | activateTabOnHover.ac.js    | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏） |
 | chromeDevtools_Button.ac.js | 侧边栏 DevTools 按钮：优先连 `localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
 | global-media-controls.ac.js | 侧边栏增加一个全局播放控制面板             |
+| test/menuTest_Button.ac.js  | 侧边栏 Popupset 菜单测试按钮，覆盖注册、级联子菜单和锚定/坐标定位；`test` 目录不会由安装脚本复制 |
 | modsManager.ac.js           | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层 |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容 |
 | rightClickTabToClose.ac.js  | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑 |
@@ -91,15 +92,55 @@ userChrome_js.alert('点击打开 Mod 管理器', {
 });
 ```
 
-### `window.userChrome_js.menu.open(options)`
+### `window.userChrome_js.menu`
 
-打开单层自绘菜单。组件使用标准 DOM 与 WAI-ARIA 语义实现，交互模型参考 Firefox 的菜单行为，但不依赖 Firefox 的 XUL `menu`、`menuitem` 或 `menupopup` 标签，因此可直接用于 Vivaldi 内置界面。
+菜单组件使用标准 DOM 与 WAI-ARIA 语义实现，交互模型参考 Firefox 的菜单行为，但不依赖 Firefox 的 XUL `menu`、`menuitem` 或 `menupopup` 标签，因此可直接用于 Vivaldi 内置界面。
 
-- 必须提供且只能提供一个定位方式：`anchor: HTMLElement`（触发元素下方）或 `position: { x, y }`（鼠标客户端坐标）
-- `items` 至少包含一个非分隔项，支持普通项 `{ id, label, disabled?, shortcut?, onSelect }`、勾选项 `{ id, type: 'checkbox', label, checked, disabled?, shortcut?, onSelect }` 和分隔项 `{ type: 'separator' }`
-- 可选 `ariaLabel`、`restoreFocus`、`onClose(reason)`；返回值提供 `close(reason?)`
-- 选中菜单项时会先关闭菜单并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示
-- 支持在 `window` 捕获阶段检测菜单外的指针或鼠标点击并关闭菜单；锚点被移除时会自动关闭。支持 `Escape`、`Tab` 关闭（并保持正常的焦点前进/后退），以及方向键、`Home` / `End`、`Enter` / `Space` 导航
+#### `menu.register(options)`
+
+注册一个常驻菜单。注册后的菜单 DOM 保留在 `#userchrome-menu-root` 中，打开和关闭只切换显示状态。
+
+```js
+const popup = userChrome_js.menu.register({
+    id: 'tools-popup',
+    ariaLabel: '工具菜单',
+    items: [
+        {
+            id: 'bookmarks',
+            label: '书签',
+            children: [
+                { id: 'home', label: '主页', onSelect: openHome }
+            ]
+        },
+        { type: 'separator' },
+        { id: 'refresh', label: '刷新', onSelect: refresh }
+    ]
+});
+```
+
+- `id` 必须是非空字符串；重复注册同一个 id 会替换旧菜单
+- `ariaLabel` 可选，默认为 `菜单`
+- `items` 至少包含一个非分隔项；菜单项支持 `id`、`label`、`disabled`、`shortcut`、`onSelect`、`type: 'checkbox'`、`checked` 和静态 `children`
+- `children` 表示子菜单；子菜单项目支持任意层级，但不会异步加载
+- 返回控制器 `{ id, element, open(options), close(reason?), unregister() }`
+
+#### `menu.openPopup(id, options)`
+
+打开已注册菜单。`options` 必须提供且只能提供一种定位方式：`anchor: HTMLElement`（锚点下方）或 `position: { x, y }`（视口坐标）。可选 `restoreFocus` 和 `onClose(reason)`，返回值提供 `close(reason?)`。
+
+```js
+userChrome_js.menu.openPopup('tools-popup', { anchor: button });
+```
+
+#### `menu.unregister(id)`、`menu.closePopup(reason?)`、`menu.getPopup(id)`
+
+- `unregister(id)` 移除常驻菜单；菜单正在显示时会先关闭 popup 链
+- `closePopup(reason?)` 关闭当前整组 popup 链；`menu.close(reason?)` 是兼容旧 API 的别名
+- `getPopup(id)` 返回已注册菜单的顶层 DOM 节点，未注册时返回 `null`
+
+#### `menu.open(options)`（兼容 API）
+
+按旧方式创建一次性菜单。必须提供 `anchor` 或 `position` 之一，以及 `items`；菜单关闭后会自动移除。现有调用方无需迁移，也支持 `restoreFocus`、`onClose(reason)` 和静态 `children`。
 
 锚定菜单示例：
 
@@ -135,7 +176,9 @@ element.addEventListener('contextmenu', function (event) {
 });
 ```
 
-首版不支持子菜单、HTML 标签、单项加载状态或快捷键分发；需要变化的勾选状态应由调用脚本保存，并在下次打开菜单时重新传入 `checked`。
+菜单项被选择时会先关闭整条 popup 链并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示。菜单支持鼠标悬停或点击展开子菜单，以及 `ArrowLeft` / `ArrowRight`、`ArrowUp` / `ArrowDown`、`Home` / `End`、`Enter` / `Space`、`Escape` 和 `Tab` 键盘操作。菜单外点击、窗口滚动/缩放和锚点被移除时会关闭或重新定位 popup 链。
+
+不支持 HTML 菜单项、异步 `childrenProvider` 或快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
 
 ### `window.userChrome_js.createElement(tag, attrs)`
 

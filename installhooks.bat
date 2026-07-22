@@ -213,9 +213,25 @@ else {
         [System.IO.File]::WriteAllLines((join-path $dstdir "window.html"), $outhtml, $encoding)
 
         Write-Host "Copying files"
-        $filesToCopy = Get-ChildItem $srcdir | Where-Object { $_.Name -notin @("README.md", "LICENSE") }
+        $excludedDirectories = @("deprecated", "test")
+        $sourceRoot = $srcdir
+        if (-Not $sourceRoot.EndsWith([string][IO.Path]::DirectorySeparatorChar)) {
+            $sourceRoot += [IO.Path]::DirectorySeparatorChar
+        }
+        $filesToCopy = Get-ChildItem -LiteralPath $srcdir -Recurse -File | Where-Object {
+            $relativePath = $_.FullName.Substring($sourceRoot.Length)
+            $directoryNames = (Split-Path $relativePath -Parent) -split '[\\/]'
+
+            $relativePath -notin @("README.md", "LICENSE") -and
+                -not ($directoryNames | Where-Object { $_ -in $excludedDirectories })
+        }
         foreach ($file in $filesToCopy) {
-            Copy-Item -Path $file.FullName -Destination $dstdir -Recurse -Force
+            $relativePath = $file.FullName.Substring($sourceRoot.Length)
+            $destinationPath = Join-Path $dstdir $relativePath
+            $destinationDirectory = Split-Path $destinationPath -Parent
+
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $file.FullName -Destination $destinationPath -Force
         }
 
         Write-Host "Done"

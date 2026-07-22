@@ -1,10 +1,10 @@
-# Popupset 风格菜单 API 规格
+# Popupset 风格菜单 API
 
 ## 背景
 
-当前 `chrome/userChrome.js` 中的 `window.userChrome_js.menu.open(options)` 是动态菜单模型：每次打开菜单时根据 `items` 创建一棵新的菜单 DOM，关闭时移除菜单 DOM。它会按需创建 `#userchrome-menu-root` 和菜单样式，但菜单本体不是常驻节点。
+`chrome/userChrome.js` 同时提供动态菜单和 popupset 风格的常驻菜单模型。旧的 `window.userChrome_js.menu.open(options)` 每次打开时创建菜单 DOM，关闭时移除；`register()` 注册的菜单则常驻在 `#userchrome-menu-root` 中，打开和关闭只切换显示状态。
 
-这个模型适合简单的一次性菜单，但不适合学习 Firefox `popupset` / `menupopup` 那种“先注册菜单，再按需展示”的结构。后续如果要重绘书签工具栏，书签文件夹天然需要子菜单和级联打开行为，因此菜单系统应该先升级为 popupset 风格的基础设施。
+动态模型继续服务已有的简单菜单，注册模型提供静态子菜单和级联打开行为，为后续重绘书签工具栏提供基础设施。
 
 这里的目标不是在 Vivaldi 中使用 Firefox XUL。Vivaldi 内置界面运行在 Chromium 环境里，等价实现应使用标准 DOM、ARIA 角色和普通事件监听来模拟 popupset 的组织方式。
 
@@ -14,12 +14,12 @@
 - 支持单层菜单和静态声明的子菜单。
 - 同一时间只允许一组 popup 链打开。
 - 保留锚点定位、坐标定位、外部点击关闭、键盘导航和焦点恢复。
-- API 名称尽量贴近 Firefox 的概念，但实现保持 Vivaldi/DOM 友好。
+- API 名称贴近 popupset 的概念，但实现保持 Vivaldi/DOM 友好。
 - 暂不展开书签工具栏重绘；本规格只定义菜单基础能力。
 
 ## DOM 结构
 
-首版使用标准 DOM，不使用自定义标签或 Web Components。
+当前实现使用标准 DOM，不使用自定义标签或 Web Components。
 
 ```html
 <div id="userchrome-menu-root">
@@ -28,12 +28,13 @@
             <span class="userchrome-menu-check" aria-hidden="true"></span>
             <span class="userchrome-menu-label">普通菜单项</span>
             <span class="userchrome-menu-shortcut">Ctrl+R</span>
+            <span class="userchrome-menu-arrow" aria-hidden="true"></span>
         </button>
     </div>
 </div>
 ```
 
-推荐语义：
+使用的语义：
 
 - popupset 容器：`#userchrome-menu-root`
 - 菜单节点：`.userchrome-menu[role="menu"][data-popup-id]`
@@ -43,7 +44,7 @@
 - 子菜单触发项：`role="menuitem"`，并设置 `aria-haspopup="menu"` 和 `aria-expanded`
 - 分隔项：`role="separator"`
 
-## 公共 API 草案
+## 公共 API
 
 ### `userChrome_js.menu.register(options)`
 
@@ -72,7 +73,7 @@ userChrome_js.menu.register({
 - `ariaLabel?: string`：菜单可访问名称。
 - `items: MenuItem[]`：菜单项列表。
 
-返回值建议为控制器对象：
+返回控制器对象：
 
 ```js
 {
@@ -126,6 +127,12 @@ userChrome_js.menu.closePopup('manual');
 ```js
 const popup = userChrome_js.menu.getPopup('menu-test-popup');
 ```
+
+### 兼容 API
+
+`userChrome_js.menu.open(options)` 保持原有调用方式：传入 `items` 以及 `anchor` 或 `position`，关闭时自动移除动态菜单 DOM。动态菜单也复用相同的静态 `children` 和级联交互实现。
+
+`userChrome_js.menu.close(reason?)` 保留为关闭当前 popup 链的兼容入口，行为与 `closePopup(reason?)` 一致。
 
 ## 菜单项类型
 
@@ -188,7 +195,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 }
 ```
 
-选择回调参数建议为：
+选择回调参数为：
 
 ```js
 {
@@ -225,7 +232,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 - 垂直方向应尽量与父菜单项顶部对齐；底部溢出时向上修正。
 - 所有菜单都应限制在视口边距内。
 
-首版只定义静态 `children`。后续如果书签文件夹数据量很大，可以再扩展懒加载子菜单，例如 `childrenProvider` 或 `onBeforeOpen`。
+当前只支持静态 `children`。如果后续书签文件夹数据量过大，可以再扩展懒加载子菜单，例如 `childrenProvider` 或 `onBeforeOpen`。
 
 ## 完整示例
 
@@ -299,9 +306,9 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 })();
 ```
 
-## 为什么首版不用自定义标签
+## 为什么不用自定义标签
 
-自定义标签能让 DOM 看起来更像 Firefox XUL，例如 `<uc-popupset>`、`<uc-menupopup>`、`<uc-menuitem>`，但首版不建议这样做。
+自定义标签能让 DOM 看起来更像 Firefox XUL，例如 `<uc-popupset>`、`<uc-menupopup>`、`<uc-menuitem>`，但当前实现不采用这种方式。
 
 原因：
 
@@ -311,20 +318,22 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 - 标准元素配合 `role`、`data-*` 和 class 已经能表达所需结构。
 - 当前仓库脚本风格偏向直接 DOM 操作，标准元素更贴近现有代码。
 
-因此首版应使用标准 DOM + ARIA。等 popupset API 稳定后，如果确实需要更强的封装，再考虑把内部实现迁移到 Custom Elements。
+因此当前实现使用标准 DOM + ARIA。如果后续确实需要更强的封装，再考虑把内部实现迁移到 Custom Elements。
 
 ## 与书签工具栏重绘的关系
 
 书签工具栏重绘不是本文档的实现范围，但它是这个菜单 API 的重要目标场景。
 
-未来重绘书签工具栏时，可以把书签栏顶层项目渲染为按钮，把书签文件夹渲染为带 `children` 的菜单项。这样书签文件夹、嵌套文件夹和普通链接都能复用同一套 popupset 与子菜单行为。
+重绘书签工具栏时，可以把书签栏顶层项目渲染为按钮，把书签文件夹渲染为带 `children` 的菜单项。这样书签文件夹、嵌套文件夹和普通链接都能复用同一套 popupset 与子菜单行为。
 
-本规格先解决菜单系统的结构问题，避免在书签工具栏实现时同时处理渲染、数据源、定位、键盘交互和子菜单状态。
+本 API 只解决菜单系统的结构、定位和交互问题；书签栏脚本仍需独立处理数据源和顶层按钮渲染。
 
 ## 验收要点
 
-- 文档描述的当前实现与 `chrome/userChrome.js` 中的动态 `menu.open(options)` 模型一致。
-- API 草案覆盖单层菜单和子菜单。
+- `menu.open(options)` 的原有调用方式和关闭回调保持兼容。
+- 注册、替换、打开、关闭和注销常驻菜单时不残留 DOM 或全局监听器。
+- 鼠标和键盘均可打开任意层级的静态子菜单。
+- 同一时间只显示一条 popup 链，子菜单在视口边缘正确翻转或修正位置。
 - 示例代码不依赖 Firefox XUL、`popupset`、`menupopup` 或 `openPopup` 原生实现。
 - 文档明确说明 Vivaldi 中使用标准 DOM 模拟 popupset。
 - 文档明确说明书签工具栏重绘是后续目标，不在本规格中展开。

@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.1.0
+// @version         0.2.0
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260722 增加常驻 popup 注册与静态级联子菜单 API
 // @note            20260717 增加自绘弹出菜单 menu API
 // @note            20260414 增加全局通知 alert API
 // @note            20260410 增加 ModManager 状态管理与条件注入
@@ -510,7 +511,10 @@
     function createMenuApi() {
         const state = {
             root: null,
-            current: null
+            registry: new Map(),
+            registrationLocks: new Set(),
+            current: null,
+            dynamicCounter: 0
         };
 
         function ensureStyle() {
@@ -546,9 +550,13 @@
                     pointer-events: auto;
                 }
 
+                #${MENU_ROOT_ID} .userchrome-menu[hidden] {
+                    display: none !important;
+                }
+
                 #${MENU_ROOT_ID} .userchrome-menu-item {
                     display: grid;
-                    grid-template-columns: 16px minmax(0, 1fr) auto;
+                    grid-template-columns: 16px minmax(0, 1fr) auto 14px;
                     column-gap: 8px;
                     align-items: center;
                     width: 100%;
@@ -566,7 +574,8 @@
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-item:hover,
-                #${MENU_ROOT_ID} .userchrome-menu-item:focus-visible {
+                #${MENU_ROOT_ID} .userchrome-menu-item:focus-visible,
+                #${MENU_ROOT_ID} .userchrome-menu-item[aria-expanded="true"] {
                     background: var(--colorHighlightBg, rgba(0, 102, 204, 0.16));
                     color: var(--colorHighlightFg, inherit);
                     outline: none;
@@ -577,7 +586,8 @@
                     cursor: default;
                 }
 
-                #${MENU_ROOT_ID} .userchrome-menu-item:disabled:hover {
+                #${MENU_ROOT_ID} .userchrome-menu-item:disabled:hover,
+                #${MENU_ROOT_ID} .userchrome-menu-item:disabled[aria-expanded="true"] {
                     background: transparent;
                 }
 
@@ -601,6 +611,12 @@
                     color: var(--colorFgFaded, rgba(34, 34, 34, 0.65));
                     font-size: 12px;
                     white-space: nowrap;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-arrow {
+                    width: 14px;
+                    color: var(--colorFgFaded, rgba(34, 34, 34, 0.65));
+                    text-align: center;
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-separator {
@@ -629,7 +645,72 @@
             return root;
         }
 
-        function normalizeOptions(options) {
+        function normalizeItems(items, parentPath, allowEmpty) {
+            if (!Array.isArray(items)) {
+                throw new TypeError('Menu items must be an array.');
+            }
+
+            const normalizedItems = items.map(function (item, index) {
+                if (!item || typeof item !== 'object') {
+                    throw new TypeError('Menu item at index ' + index + ' must be an object.');
+                }
+
+                if (item.type === 'separator') {
+                    return { type: 'separator' };
+                }
+
+                if (typeof item.label !== 'string') {
+                    throw new TypeError('Menu item at index ' + index + ' requires a string label.');
+                }
+
+                const path = parentPath.concat(index);
+                const children = item.children === undefined
+                    ? []
+                    : normalizeItems(item.children, path, true);
+
+                return {
+                    id: typeof item.id === 'string' ? item.id : '',
+                    type: item.type === 'checkbox' ? 'checkbox' : 'item',
+                    label: item.label,
+                    checked: item.type === 'checkbox' && item.checked === true,
+                    disabled: item.disabled === true,
+                    shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
+                    children: children,
+                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
+                };
+            });
+
+            if (!normalizedItems.length && allowEmpty) {
+                return normalizedItems;
+            }
+
+            if (!normalizedItems.some(function (item) {
+                return item.type !== 'separator';
+            })) {
+                throw new TypeError('Menu requires at least one non-separator item.');
+            }
+
+            return normalizedItems;
+        }
+
+        function normalizeRegistration(options) {
+            if (!options || typeof options !== 'object') {
+                throw new TypeError('Menu registration options must be an object.');
+            }
+            if (typeof options.id !== 'string' || !options.id.trim()) {
+                throw new TypeError('Registered menu requires a non-empty string id.');
+            }
+
+            return {
+                id: options.id.trim(),
+                ariaLabel: typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
+                    ? options.ariaLabel.trim()
+                    : '菜单',
+                items: normalizeItems(options.items, [])
+            };
+        }
+
+        function normalizeOpenOptions(options, requireItems) {
             if (!options || typeof options !== 'object') {
                 throw new TypeError('Menu options must be an object.');
             }
@@ -643,254 +724,64 @@
                 throw new TypeError('Menu requires exactly one anchor or position option.');
             }
 
-            if (!Array.isArray(options.items)) {
-                throw new TypeError('Menu items must be an array.');
-            }
-
-            const items = options.items.map(function (item, index) {
-                if (!item || typeof item !== 'object') {
-                    throw new TypeError('Menu item at index ' + index + ' must be an object.');
-                }
-
-                if (item.type === 'separator') {
-                    return { type: 'separator' };
-                }
-
-                if (typeof item.label !== 'string') {
-                    throw new TypeError('Menu item at index ' + index + ' requires a string label.');
-                }
-
-                return {
-                    id: typeof item.id === 'string' ? item.id : '',
-                    type: item.type === 'checkbox' ? 'checkbox' : 'item',
-                    label: item.label,
-                    checked: item.type === 'checkbox' && item.checked === true,
-                    disabled: item.disabled === true,
-                    shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
-                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
-                };
-            });
-
-            if (!items.some(function (item) {
-                return item.type !== 'separator';
-            })) {
-                throw new TypeError('Menu requires at least one non-separator item.');
-            }
-
-            return {
+            const normalized = {
                 anchor: hasAnchor ? options.anchor : null,
                 position: hasPosition ? { x: position.x, y: position.y } : null,
-                items: items,
-                ariaLabel: typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
-                    ? options.ariaLabel.trim()
-                    : '菜单',
                 restoreFocus: options.restoreFocus instanceof HTMLElement
                     ? options.restoreFocus
                     : (hasAnchor ? options.anchor : null),
                 onClose: typeof options.onClose === 'function' ? options.onClose : null
             };
+
+            if (requireItems) {
+                normalized.ariaLabel = typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
+                    ? options.ariaLabel.trim()
+                    : '菜单';
+                normalized.items = normalizeItems(options.items, []);
+            }
+
+            return normalized;
         }
 
-        function getFocusableItems(current) {
-            return current.itemElements.filter(function (entry) {
-                return !entry.item.disabled;
-            });
-        }
-
-        function focusItem(current, index) {
-            const focusableItems = getFocusableItems(current);
-            if (!focusableItems.length) {
-                return;
-            }
-
-            const normalizedIndex = ((index % focusableItems.length) + focusableItems.length) % focusableItems.length;
-            current.focusedIndex = normalizedIndex;
-            focusableItems[normalizedIndex].element.focus();
-        }
-
-        function restoreFocus(current) {
-            const target = current.options.restoreFocus;
-            if (target && target.isConnected && typeof target.focus === 'function') {
-                target.focus({ preventScroll: true });
-            }
-        }
-
-        function invokeSelect(current, entry, event) {
-            if (entry.item.disabled || !state.current || state.current !== current) {
-                return;
-            }
-
-            close('select');
-            if (!entry.item.onSelect) {
-                return;
-            }
-
-            try {
-                Promise.resolve(entry.item.onSelect({
-                    id: entry.item.id,
-                    checked: entry.item.type === 'checkbox' ? !entry.item.checked : entry.item.checked,
-                    previousChecked: entry.item.checked,
-                    event: event
-                })).catch(function (error) {
-                    console.error('[userChrome.menu] Item callback failed.', error);
-                });
-            } catch (error) {
-                console.error('[userChrome.menu] Item callback failed.', error);
-            }
-        }
-
-        function positionMenu(current) {
-            if (!current || !current.element.isConnected) {
-                return;
-            }
-
-            if (current.options.anchor && !current.options.anchor.isConnected) {
-                close('anchor-removed', false);
-                return;
-            }
-
-            const menu = current.element;
-            menu.style.visibility = 'hidden';
-            menu.style.left = '0px';
-            menu.style.top = '0px';
-
-            const rect = menu.getBoundingClientRect();
-            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
-            const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
-            let x;
-            let y;
-
-            if (current.options.anchor) {
-                const anchorRect = current.options.anchor.getBoundingClientRect();
-                x = anchorRect.left;
-                y = anchorRect.bottom;
-                if (y + rect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
-                    y = anchorRect.top - rect.height;
-                }
-                if (x + rect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
-                    x = anchorRect.right - rect.width;
-                }
-            } else {
-                x = current.options.position.x;
-                y = current.options.position.y;
-                if (x + rect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
-                    x -= rect.width;
-                }
-                if (y + rect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
-                    y -= rect.height;
-                }
-            }
-
-            x = Math.max(MENU_VIEWPORT_MARGIN, Math.min(x, viewportWidth - rect.width - MENU_VIEWPORT_MARGIN));
-            y = Math.max(MENU_VIEWPORT_MARGIN, Math.min(y, viewportHeight - rect.height - MENU_VIEWPORT_MARGIN));
-            menu.style.left = Math.round(x) + 'px';
-            menu.style.top = Math.round(y) + 'px';
-            menu.style.visibility = '';
-        }
-
-        function handleKeydown(event) {
-            const current = state.current;
-            if (!current) {
-                return;
-            }
-
-            const focusableItems = getFocusableItems(current);
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                close('escape');
-                return;
-            }
-            if (event.key === 'Tab') {
-                close('tab');
-                return;
-            }
-            if (!focusableItems.length) {
-                return;
-            }
-
-            if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                focusItem(current, current.focusedIndex + 1);
-            } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                focusItem(current, current.focusedIndex - 1);
-            } else if (event.key === 'Home') {
-                event.preventDefault();
-                focusItem(current, 0);
-            } else if (event.key === 'End') {
-                event.preventDefault();
-                focusItem(current, focusableItems.length - 1);
-            }
-        }
-
-        function handleOutsideInteraction(event) {
-            const current = state.current;
-            if (!current) {
-                return;
-            }
-
-            const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : null;
-            if (eventPath ? eventPath.includes(current.element) : current.element.contains(event.target)) {
-                return;
-            }
-
-            close('outside', false);
-        }
-
-        function close(reason, shouldRestoreFocus) {
-            const current = state.current;
-            if (!current) {
-                return;
-            }
-
-            state.current = null;
-            document.removeEventListener('keydown', handleKeydown, true);
-            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
-            window.removeEventListener('mousedown', handleOutsideInteraction, true);
-            window.removeEventListener('resize', current.reposition);
-            window.removeEventListener('scroll', current.reposition, true);
-            if (current.anchorObserver) {
-                current.anchorObserver.disconnect();
-            }
-            current.element.remove();
-
-            if (shouldRestoreFocus !== false) {
-                restoreFocus(current);
-            }
-
-            if (current.options.onClose) {
-                try {
-                    current.options.onClose(reason || 'close');
-                } catch (error) {
-                    console.error('[userChrome.menu] Close callback failed.', error);
-                }
-            }
-        }
-
-        function open(options) {
-            const normalizedOptions = normalizeOptions(options);
-            const root = ensureRoot();
-            if (!root) {
-                return null;
-            }
-
-            close('replace', false);
-
-            const menu = document.createElement('div');
-            menu.className = 'userchrome-menu';
-            menu.setAttribute('role', 'menu');
-            menu.setAttribute('aria-label', normalizedOptions.ariaLabel);
-
-            const current = {
-                options: normalizedOptions,
-                element: menu,
-                itemElements: [],
-                focusedIndex: 0,
-                reposition: null,
-                anchorObserver: null
+        function createMenuEntry(id, ariaLabel, items, dynamic) {
+            const entry = {
+                id: id,
+                ariaLabel: ariaLabel,
+                items: items,
+                dynamic: dynamic === true,
+                menus: [],
+                rootMenu: null,
+                element: null,
+                controller: null
             };
 
-            normalizedOptions.items.forEach(function (item) {
+            entry.rootMenu = createMenuElement(entry, items, [], null, null);
+            entry.element = entry.rootMenu.element;
+            return entry;
+        }
+
+        function createMenuElement(entry, items, path, parentMenu, parentItem) {
+            const menu = document.createElement('div');
+            menu.className = 'userchrome-menu' + (parentMenu ? ' userchrome-menu-submenu' : '');
+            menu.setAttribute('role', 'menu');
+            menu.setAttribute('aria-label', parentItem ? parentItem.item.label : entry.ariaLabel);
+            menu.setAttribute('data-popup-id', entry.id);
+            menu.setAttribute('data-popup-path', path.join('.'));
+            menu.hidden = true;
+
+            const meta = {
+                entry: entry,
+                element: menu,
+                items: items,
+                path: path,
+                parentMenu: parentMenu,
+                parentItem: parentItem,
+                itemElements: [],
+                focusedIndex: 0
+            };
+            entry.menus.push(meta);
+
+            items.forEach(function (item, index) {
                 if (item.type === 'separator') {
                     const separator = document.createElement('div');
                     separator.className = 'userchrome-menu-separator';
@@ -922,34 +813,436 @@
                 const shortcut = document.createElement('span');
                 shortcut.className = 'userchrome-menu-shortcut';
                 shortcut.textContent = item.shortcut;
+                const arrow = document.createElement('span');
+                arrow.className = 'userchrome-menu-arrow';
+                arrow.setAttribute('aria-hidden', 'true');
 
                 button.appendChild(check);
                 button.appendChild(label);
                 button.appendChild(shortcut);
-                const entry = { item: item, element: button };
+                button.appendChild(arrow);
+                const itemEntry = {
+                    item: item,
+                    element: button,
+                    menu: meta,
+                    submenu: null,
+                    index: index
+                };
+
+                if (item.children.length) {
+                    button.setAttribute('aria-haspopup', 'menu');
+                    button.setAttribute('aria-expanded', 'false');
+                    arrow.textContent = '>';
+                }
+
                 button.addEventListener('focus', function () {
-                    const focusableItems = getFocusableItems(current);
-                    current.focusedIndex = focusableItems.indexOf(entry);
+                    const focusableItems = getFocusableItems(meta);
+                    meta.focusedIndex = focusableItems.indexOf(itemEntry);
+                    if (!state.current || state.current.entry !== entry) {
+                        return;
+                    }
+                    state.current.activeMenu = meta;
+                    if (state.current.suppressFocusOpen === itemEntry) {
+                        state.current.suppressFocusOpen = null;
+                        return;
+                    }
+                    if (item.children.length && !item.disabled) {
+                        openSubmenu(state.current, meta, itemEntry, false);
+                    } else {
+                        closeSubmenusAfter(state.current, meta);
+                    }
+                });
+                button.addEventListener('pointerenter', function () {
+                    if (!state.current || state.current.entry !== entry) {
+                        return;
+                    }
+                    if (item.disabled) {
+                        state.current.activeMenu = meta;
+                        closeSubmenusAfter(state.current, meta);
+                        return;
+                    }
+                    if (item.children.length) {
+                        openSubmenu(state.current, meta, itemEntry, false);
+                    } else {
+                        state.current.activeMenu = meta;
+                        closeSubmenusAfter(state.current, meta);
+                    }
                 });
                 button.addEventListener('click', function (event) {
-                    invokeSelect(current, entry, event);
+                    if (item.children.length && !item.disabled) {
+                        event.preventDefault();
+                        openSubmenu(state.current, meta, itemEntry, true);
+                        return;
+                    }
+                    invokeSelect(state.current, itemEntry, event);
                 });
+
                 menu.appendChild(button);
-                current.itemElements.push(entry);
+                meta.itemElements.push(itemEntry);
+
+                if (item.children.length) {
+                    itemEntry.submenu = createMenuElement(entry, item.children, path.concat(index), meta, itemEntry);
+                    menu.appendChild(itemEntry.submenu.element);
+                }
             });
 
-            current.reposition = function () {
-                positionMenu(current);
+            return meta;
+        }
+
+        function getFocusableItems(menu) {
+            return menu ? menu.itemElements.filter(function (entry) {
+                return !entry.item.disabled;
+            }) : [];
+        }
+
+        function focusItem(menu, index) {
+            const focusableItems = getFocusableItems(menu);
+            if (!focusableItems.length) {
+                return;
+            }
+
+            const normalizedIndex = ((index % focusableItems.length) + focusableItems.length) % focusableItems.length;
+            menu.focusedIndex = normalizedIndex;
+            if (state.current) {
+                state.current.activeMenu = menu;
+            }
+            focusableItems[normalizedIndex].element.focus();
+        }
+
+        function restoreFocus(current) {
+            const target = current.options.restoreFocus;
+            if (target && target.isConnected && typeof target.focus === 'function') {
+                target.focus({ preventScroll: true });
+            }
+        }
+
+        function closeSubmenusAfter(current, menu) {
+            if (!current || !menu) {
+                return;
+            }
+
+            const menuIndex = current.chain.indexOf(menu);
+            if (menuIndex === -1) {
+                return;
+            }
+
+            while (current.chain.length > menuIndex + 1) {
+                const child = current.chain.pop();
+                child.element.hidden = true;
+                child.element.style.visibility = '';
+                if (child.parentItem) {
+                    child.parentItem.element.setAttribute('aria-expanded', 'false');
+                }
+            }
+        }
+
+        function openSubmenu(current, menu, itemEntry, focusFirst) {
+            if (!current
+                || state.current !== current
+                || current.entry !== itemEntry.menu.entry
+                || !itemEntry.submenu
+                || itemEntry.item.disabled) {
+                return;
+            }
+
+            closeSubmenusAfter(current, menu);
+            const submenu = itemEntry.submenu;
+            submenu.element.hidden = false;
+            itemEntry.element.setAttribute('aria-expanded', 'true');
+            current.chain.push(submenu);
+            current.activeMenu = focusFirst ? submenu : menu;
+            positionChain(current);
+
+            if (focusFirst) {
+                requestAnimationFrame(function () {
+                    if (state.current === current && current.chain.includes(submenu)) {
+                        focusItem(submenu, 0);
+                    }
+                });
+            }
+        }
+
+        function invokeSelect(current, itemEntry, event) {
+            if (!current || state.current !== current || itemEntry.item.disabled || itemEntry.item.children.length) {
+                return;
+            }
+
+            const callback = itemEntry.item.onSelect;
+            close('select');
+            if (!callback) {
+                return;
+            }
+
+            try {
+                Promise.resolve(callback({
+                    id: itemEntry.item.id,
+                    checked: itemEntry.item.type === 'checkbox' ? !itemEntry.item.checked : itemEntry.item.checked,
+                    previousChecked: itemEntry.item.checked,
+                    event: event
+                })).catch(function (error) {
+                    console.error('[userChrome.menu] Item callback failed.', error);
+                });
+            } catch (error) {
+                console.error('[userChrome.menu] Item callback failed.', error);
+            }
+        }
+
+        function positionMenu(menu, x, y) {
+            if (!menu || !menu.element.isConnected) {
+                return;
+            }
+
+            const element = menu.element;
+            element.hidden = false;
+            element.style.visibility = 'hidden';
+            element.style.left = '0px';
+            element.style.top = '0px';
+
+            const rect = element.getBoundingClientRect();
+            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+            x = Math.max(MENU_VIEWPORT_MARGIN, Math.min(x, viewportWidth - rect.width - MENU_VIEWPORT_MARGIN));
+            y = Math.max(MENU_VIEWPORT_MARGIN, Math.min(y, viewportHeight - rect.height - MENU_VIEWPORT_MARGIN));
+            element.style.left = Math.round(x) + 'px';
+            element.style.top = Math.round(y) + 'px';
+            element.style.visibility = '';
+        }
+
+        function positionChain(current) {
+            if (!current || !current.entry.element.isConnected) {
+                return;
+            }
+
+            if (current.options.anchor && !current.options.anchor.isConnected) {
+                close('anchor-removed', false);
+                return;
+            }
+
+            const rootMenu = current.chain[0];
+            const rootElement = rootMenu.element;
+            rootElement.hidden = false;
+            rootElement.style.visibility = 'hidden';
+            rootElement.style.left = '0px';
+            rootElement.style.top = '0px';
+            const rootRect = rootElement.getBoundingClientRect();
+            const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+            const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+            let x;
+            let y;
+
+            if (current.options.anchor) {
+                const anchorRect = current.options.anchor.getBoundingClientRect();
+                x = anchorRect.left;
+                y = anchorRect.bottom;
+                if (y + rootRect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
+                    y = anchorRect.top - rootRect.height;
+                }
+                if (x + rootRect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
+                    x = anchorRect.right - rootRect.width;
+                }
+            } else {
+                x = current.options.position.x;
+                y = current.options.position.y;
+                if (x + rootRect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
+                    x -= rootRect.width;
+                }
+                if (y + rootRect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
+                    y -= rootRect.height;
+                }
+            }
+
+            positionMenu(rootMenu, x, y);
+
+            for (let index = 1; index < current.chain.length; index += 1) {
+                const menu = current.chain[index];
+                const parentItem = menu.parentItem;
+                if (!parentItem || !parentItem.element.isConnected) {
+                    continue;
+                }
+
+                const parentRect = parentItem.element.getBoundingClientRect();
+                menu.element.hidden = false;
+                menu.element.style.visibility = 'hidden';
+                menu.element.style.left = '0px';
+                menu.element.style.top = '0px';
+                const menuRect = menu.element.getBoundingClientRect();
+                let childX = parentRect.right;
+                let childY = parentRect.top;
+                if (childX + menuRect.width > viewportWidth - MENU_VIEWPORT_MARGIN) {
+                    childX = parentRect.left - menuRect.width;
+                }
+                if (childY + menuRect.height > viewportHeight - MENU_VIEWPORT_MARGIN) {
+                    childY = viewportHeight - menuRect.height - MENU_VIEWPORT_MARGIN;
+                }
+                positionMenu(menu, childX, childY);
+            }
+        }
+
+        function handleKeydown(event) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            const activeMenu = current.activeMenu || current.chain[0];
+            const focusableItems = getFocusableItems(activeMenu);
+            const activeEntry = focusableItems.find(function (entry) {
+                return entry.element === document.activeElement;
+            });
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close('escape');
+                return;
+            }
+            if (event.key === 'Tab') {
+                close('tab');
+                return;
+            }
+            if (event.key === 'ArrowLeft') {
+                if (activeMenu.parentMenu && activeMenu.parentItem) {
+                    event.preventDefault();
+                    closeSubmenusAfter(current, activeMenu.parentMenu);
+                    current.activeMenu = activeMenu.parentMenu;
+                    current.suppressFocusOpen = activeMenu.parentItem;
+                    activeMenu.parentItem.element.focus();
+                }
+                return;
+            }
+            if (event.key === 'ArrowRight') {
+                if (activeEntry && activeEntry.submenu && !activeEntry.item.disabled) {
+                    event.preventDefault();
+                    openSubmenu(current, activeMenu, activeEntry, true);
+                }
+                return;
+            }
+            if (event.key === 'Enter' || event.key === ' ') {
+                if (activeEntry) {
+                    event.preventDefault();
+                    activeEntry.element.click();
+                }
+                return;
+            }
+            if (!focusableItems.length) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                focusItem(activeMenu, activeMenu.focusedIndex + 1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                focusItem(activeMenu, activeMenu.focusedIndex - 1);
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                focusItem(activeMenu, 0);
+            } else if (event.key === 'End') {
+                event.preventDefault();
+                focusItem(activeMenu, focusableItems.length - 1);
+            }
+        }
+
+        function handleOutsideInteraction(event) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : null;
+            const isInside = current.chain.some(function (menu) {
+                return eventPath
+                    ? eventPath.includes(menu.element)
+                    : menu.element.contains(event.target);
+            });
+            if (isInside) {
+                return;
+            }
+
+            close('outside', false);
+        }
+
+        function hideEntryMenus(entry) {
+            entry.menus.forEach(function (menu) {
+                menu.element.hidden = true;
+                menu.element.style.visibility = '';
+                menu.element.style.left = '';
+                menu.element.style.top = '';
+                menu.itemElements.forEach(function (itemEntry) {
+                    if (itemEntry.submenu) {
+                        itemEntry.element.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            });
+        }
+
+        function close(reason, shouldRestoreFocus) {
+            const current = state.current;
+            if (!current) {
+                return;
+            }
+
+            state.current = null;
+            document.removeEventListener('keydown', handleKeydown, true);
+            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
+            window.removeEventListener('mousedown', handleOutsideInteraction, true);
+            window.removeEventListener('resize', current.reposition);
+            window.removeEventListener('scroll', current.reposition, true);
+            if (current.anchorObserver) {
+                current.anchorObserver.disconnect();
+            }
+
+            hideEntryMenus(current.entry);
+            if (current.entry.dynamic) {
+                current.entry.element.remove();
+            }
+
+            if (shouldRestoreFocus !== false) {
+                restoreFocus(current);
+            }
+
+            if (current.options.onClose) {
+                try {
+                    current.options.onClose(reason || 'close');
+                } catch (error) {
+                    console.error('[userChrome.menu] Close callback failed.', error);
+                }
+            }
+        }
+
+        function openEntry(entry, options) {
+            const root = ensureRoot();
+            if (!root) {
+                return null;
+            }
+
+            close('replace', false);
+            if (!entry.element.isConnected) {
+                root.appendChild(entry.element);
+            }
+            hideEntryMenus(entry);
+
+            const current = {
+                entry: entry,
+                options: options,
+                chain: [entry.menus[0]],
+                activeMenu: entry.menus[0],
+                suppressFocusOpen: null,
+                reposition: null,
+                anchorObserver: null
             };
-            root.appendChild(menu);
             state.current = current;
-            if (current.options.anchor && typeof MutationObserver === 'function') {
+            entry.element.hidden = false;
+
+            current.reposition = function () {
+                positionChain(current);
+            };
+            if (options.anchor && typeof MutationObserver === 'function') {
                 current.anchorObserver = new MutationObserver(function () {
                     if (state.current !== current) {
                         current.anchorObserver.disconnect();
                         return;
                     }
-                    if (!current.options.anchor.isConnected) {
+                    if (!options.anchor.isConnected) {
                         close('anchor-removed', false);
                     }
                 });
@@ -965,11 +1258,11 @@
             window.addEventListener('mousedown', handleOutsideInteraction, true);
             window.addEventListener('resize', current.reposition);
             window.addEventListener('scroll', current.reposition, true);
-            positionMenu(current);
+            positionChain(current);
 
             requestAnimationFrame(function () {
                 if (state.current === current) {
-                    focusItem(current, 0);
+                    focusItem(current.chain[0], 0);
                 }
             });
 
@@ -982,10 +1275,99 @@
             };
         }
 
+        function createController(entry) {
+            const controller = {
+                id: entry.id,
+                element: entry.element,
+                open: function (options) {
+                    if (state.registry.get(entry.id) !== entry) {
+                        return null;
+                    }
+                    return openEntry(entry, normalizeOpenOptions(options, false));
+                },
+                close: function (reason) {
+                    if (state.current && state.current.entry === entry) {
+                        close(reason || 'close');
+                    }
+                },
+                unregister: function () {
+                    if (state.registry.get(entry.id) === entry) {
+                        unregister(entry.id);
+                    }
+                }
+            };
+            return controller;
+        }
+
+        function register(options) {
+            const normalized = normalizeRegistration(options);
+            if (state.registrationLocks.has(normalized.id)) {
+                throw new Error('Menu registration is already in progress: ' + normalized.id);
+            }
+            const root = ensureRoot();
+            if (!root) {
+                return null;
+            }
+
+            state.registrationLocks.add(normalized.id);
+            try {
+                if (state.registry.has(normalized.id)) {
+                    unregister(normalized.id, 'replace');
+                }
+
+                const entry = createMenuEntry(normalized.id, normalized.ariaLabel, normalized.items, false);
+                root.appendChild(entry.element);
+                entry.controller = createController(entry);
+                state.registry.set(entry.id, entry);
+                return entry.controller;
+            } finally {
+                state.registrationLocks.delete(normalized.id);
+            }
+        }
+
+        function unregister(id, reason) {
+            const entry = state.registry.get(id);
+            if (!entry) {
+                return false;
+            }
+
+            state.registry.delete(id);
+            if (state.current && state.current.entry === entry) {
+                close(reason || 'unregister', false);
+            }
+            entry.element.remove();
+            return true;
+        }
+
+        function openPopup(id, options) {
+            const entry = state.registry.get(id);
+            if (!entry) {
+                throw new Error('Unknown registered menu: ' + id);
+            }
+            return openEntry(entry, normalizeOpenOptions(options, false));
+        }
+
+        function open(options) {
+            const normalized = normalizeOpenOptions(options, true);
+            const id = '__dynamic-menu-' + (++state.dynamicCounter);
+            const entry = createMenuEntry(id, normalized.ariaLabel, normalized.items, true);
+            return openEntry(entry, normalized);
+        }
+
         return {
             open: open,
             close: function (reason) {
                 close(reason || 'close');
+            },
+            register: register,
+            unregister: unregister,
+            openPopup: openPopup,
+            closePopup: function (reason) {
+                close(reason || 'close');
+            },
+            getPopup: function (id) {
+                const entry = state.registry.get(id);
+                return entry ? entry.element : null;
             }
         };
     }
