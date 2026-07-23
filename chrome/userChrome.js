@@ -592,11 +592,22 @@
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-check {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
                     width: 16px;
+                    height: 16px;
                     font-size: 14px;
                     font-weight: 700;
                     line-height: 1;
                     text-align: center;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-icon {
+                    display: block;
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-label {
@@ -674,6 +685,7 @@
                     label: item.label,
                     checked: item.type === 'checkbox' && item.checked === true,
                     disabled: item.disabled === true,
+                    icon: typeof item.icon === 'string' ? item.icon : '',
                     shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
                     children: children,
                     onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
@@ -806,7 +818,18 @@
                 const check = document.createElement('span');
                 check.className = 'userchrome-menu-check';
                 check.setAttribute('aria-hidden', 'true');
-                check.textContent = item.type === 'checkbox' && item.checked ? '✓' : '';
+                if (item.icon) {
+                    const icon = document.createElement('img');
+                    icon.className = 'userchrome-menu-icon';
+                    icon.alt = '';
+                    icon.src = item.icon;
+                    icon.addEventListener('error', function () {
+                        icon.remove();
+                    }, { once: true });
+                    check.appendChild(icon);
+                } else {
+                    check.textContent = item.type === 'checkbox' && item.checked ? '✓' : '';
+                }
                 const label = document.createElement('span');
                 label.className = 'userchrome-menu-label';
                 label.textContent = item.label;
