@@ -9,7 +9,7 @@
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏，使用 Popupset 展开文件夹，并为书签、文件夹和分隔线提供完整右键操作                                  |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏，使用 Popupset 展开文件夹，为网址书签加载多分辨率 favicon，并为书签、文件夹和分隔线提供完整右键操作     |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -189,6 +189,7 @@ element.addEventListener('contextmenu', function (event) {
 - 书签项目支持编辑、重命名、剪切、复制和删除；编辑器使用原生 `<dialog>`
 - 剪贴板通过版本化 `localStorage` 保存，复制文件夹时递归重建，剪切时调用 `chrome.bookmarks.move`
 - 写操作依赖 `chrome.bookmarks` 事件刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
+- 网址书签的图标通过 `chrome://favicon2/` 获取，书签栏使用 16/24/32px `srcset` 适配不同显示缩放
 - Popupset 内右键会暂存原书签菜单，关闭右键菜单后返回原位置；各级文件夹子菜单使用一致的圆角、边框和阴影
 
 ### `window.userChrome_js.createElement(tag, attrs)`

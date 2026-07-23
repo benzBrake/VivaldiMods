@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260723.2
+// @version         20260723.3
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -32,6 +32,7 @@
     const CLIPBOARD_VERSION = 1;
     const REFRESH_DELAY = 120;
     const MOUNT_DELAY = 120;
+    const FAVICON_SIZES = [16, 24, 32];
     const FOLDER_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" class="folder-icon"><g class="fill-override"><svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2.35717 3.36075C2.13323 3.58693 2.00515 3.89221 2 4.21203V11.7872C1.99441 11.9479 2.02163 12.1081 2.07996 12.2577C2.13828 12.4073 2.22648 12.5431 2.33904 12.6568C2.4516 12.7705 2.58613 12.8596 2.73425 12.9185C2.88237 12.9774 3.04091 13.0049 3.2 12.9993H12.8C13.1167 12.9941 13.4189 12.8647 13.6428 12.6385C13.8668 12.4123 13.9948 12.1071 14 11.7872L14 6C14 5.5 13.5 5 13 5H8L6.8 3H3.2C2.88334 3.0052 2.5811 3.13457 2.35717 3.36075ZM2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04966 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z"></path><path fill-rule="evenodd" d="M2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04967 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z" fill-opacity="0.1"></path></svg></g></svg>';
     const OVERFLOW_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.92429 3.07574C3.68997 2.84142 3.31007 2.84142 3.07576 3.07574C2.84145 3.31005 2.84145 3.68995 3.07576 3.92426L7.1515 8L3.07576 12.0757C2.84145 12.3101 2.84145 12.6899 3.07576 12.9243C3.31007 13.1586 3.68997 13.1586 3.92429 12.9243L8.84855 8L3.92429 3.07574Z" fill="currentColor"></path><path d="M8.92429 3.07574C8.68997 2.84142 8.31007 2.84142 8.07576 3.07574C7.84145 3.31005 7.84145 3.68995 8.07576 3.92426L12.1515 8L8.07576 12.0757C7.84145 12.3101 7.84145 12.6899 8.07576 12.9243C8.31007 13.1586 8.68997 13.1586 8.92429 12.9243L13.8486 8L8.92429 3.07574Z" fill="currentColor"></path></svg>';
 
@@ -1229,8 +1230,14 @@
         };
     }
 
-    function getFaviconUrl (url) {
-        return 'chrome://favicon/size/16@1x/' + encodeURIComponent(url);
+    function getFaviconUrl (url, size) {
+        return 'chrome://favicon2/?size=' + size + '&pageUrl=' + encodeURIComponent(url);
+    }
+
+    function getFaviconSrcset (url) {
+        return FAVICON_SIZES.map(function (size) {
+            return getFaviconUrl(url, size) + ' ' + size + 'w';
+        }).join(',');
     }
 
     function createBookmarkMenuItems (nodes) {
@@ -1250,7 +1257,7 @@
                 return {
                     id: getMenuItemId('bookmark-', node),
                     label: label,
-                    icon: getFaviconUrl(node.url),
+                    icon: getFaviconUrl(node.url, FAVICON_SIZES[0]),
                     onSelect: function (selection) {
                         return openBookmark(node, selection && selection.event);
                     },
@@ -1702,9 +1709,24 @@
             title: node.url ? getNodeLabel(node, '未命名书签') + '\n' + node.url : label
         });
 
-        // Parse the selected static SVG without adding a wrapper to Vivaldi's toolbar DOM.
-        const iconTemplate = createElement('template', { innerHTML: FOLDER_ICON_SVG });
-        const icon = iconTemplate.content.firstElementChild;
+        let icon;
+        if (node.url) {
+            icon = createElement('img', {
+                class: 'favicon',
+                src: getFaviconUrl(node.url, FAVICON_SIZES[0]),
+                srcset: getFaviconSrcset(node.url),
+                sizes: '16px',
+                width: '16',
+                height: '16',
+                alt: '',
+                draggable: 'false',
+                'aria-hidden': 'true'
+            });
+        } else {
+            // Parse the selected static SVG without adding a wrapper to Vivaldi's toolbar DOM.
+            const iconTemplate = createElement('template', { innerHTML: FOLDER_ICON_SVG });
+            icon = iconTemplate.content.firstElementChild;
+        }
         const title = createElement('span', {
             class: 'title',
             innerText: label
