@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.0
+// @version         0.2.1
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260723 菜单项增加右键回调、自定义样式类和可恢复叠菜单
 // @note            20260722 增加常驻 popup 注册与静态级联子菜单 API
 // @note            20260717 增加自绘弹出菜单 menu API
 // @note            20260414 增加全局通知 alert API
@@ -635,6 +636,18 @@
                     margin: 4px 6px;
                     background: var(--colorBorder, rgba(0, 0, 0, 0.16));
                 }
+
+                #${MENU_ROOT_ID} .userchrome-menu-separator[data-contextmenu="true"] {
+                    height: 9px;
+                    margin: 0 6px;
+                    background: linear-gradient(
+                        to bottom,
+                        transparent 4px,
+                        var(--colorBorder, rgba(0, 0, 0, 0.16)) 4px,
+                        var(--colorBorder, rgba(0, 0, 0, 0.16)) 5px,
+                        transparent 5px
+                    );
+                }
             `;
             document.head.appendChild(style);
             return true;
@@ -656,6 +669,15 @@
             return root;
         }
 
+        function normalizeClassName(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+            return value.split(/\s+/).filter(function (token) {
+                return /^[a-zA-Z_-][a-zA-Z0-9_-]*$/.test(token);
+            }).join(' ');
+        }
+
         function normalizeItems(items, parentPath, allowEmpty) {
             if (!Array.isArray(items)) {
                 throw new TypeError('Menu items must be an array.');
@@ -667,7 +689,11 @@
                 }
 
                 if (item.type === 'separator') {
-                    return { type: 'separator' };
+                    return {
+                        id: typeof item.id === 'string' ? item.id : '',
+                        type: 'separator',
+                        onContextMenu: typeof item.onContextMenu === 'function' ? item.onContextMenu : null
+                    };
                 }
 
                 if (typeof item.label !== 'string') {
@@ -688,7 +714,8 @@
                     icon: typeof item.icon === 'string' ? item.icon : '',
                     shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
                     children: children,
-                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
+                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null,
+                    onContextMenu: typeof item.onContextMenu === 'function' ? item.onContextMenu : null
                 };
             });
 
@@ -718,6 +745,7 @@
                 ariaLabel: typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
                     ? options.ariaLabel.trim()
                     : '菜单',
+                className: normalizeClassName(options.className),
                 items: normalizeItems(options.items, [])
             };
         }
@@ -742,7 +770,8 @@
                 restoreFocus: options.restoreFocus instanceof HTMLElement
                     ? options.restoreFocus
                     : (hasAnchor ? options.anchor : null),
-                onClose: typeof options.onClose === 'function' ? options.onClose : null
+                onClose: typeof options.onClose === 'function' ? options.onClose : null,
+                preserveCurrent: options.preserveCurrent === true
             };
 
             if (requireItems) {
@@ -750,15 +779,17 @@
                     ? options.ariaLabel.trim()
                     : '菜单';
                 normalized.items = normalizeItems(options.items, []);
+                normalized.className = normalizeClassName(options.className);
             }
 
             return normalized;
         }
 
-        function createMenuEntry(id, ariaLabel, items, dynamic) {
+        function createMenuEntry(id, ariaLabel, className, items, dynamic) {
             const entry = {
                 id: id,
                 ariaLabel: ariaLabel,
+                className: className,
                 items: items,
                 dynamic: dynamic === true,
                 menus: [],
@@ -774,7 +805,9 @@
 
         function createMenuElement(entry, items, path, parentMenu, parentItem) {
             const menu = document.createElement('div');
-            menu.className = 'userchrome-menu' + (parentMenu ? ' userchrome-menu-submenu' : '');
+            menu.className = 'userchrome-menu'
+                + (parentMenu ? ' userchrome-menu-submenu' : '')
+                + (entry.className ? ' ' + entry.className : '');
             menu.setAttribute('role', 'menu');
             menu.setAttribute('aria-label', parentItem ? parentItem.item.label : entry.ariaLabel);
             menu.setAttribute('data-popup-id', entry.id);
@@ -798,6 +831,21 @@
                     const separator = document.createElement('div');
                     separator.className = 'userchrome-menu-separator';
                     separator.setAttribute('role', 'separator');
+                    const separatorEntry = {
+                        item: item,
+                        element: separator,
+                        menu: meta,
+                        submenu: null,
+                        index: index
+                    };
+                    if (item.onContextMenu) {
+                        separator.dataset.contextmenu = 'true';
+                        separator.addEventListener('contextmenu', function (event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            invokeContextMenu(state.current, separatorEntry, event);
+                        });
+                    }
                     menu.appendChild(separator);
                     return;
                 }
@@ -899,6 +947,13 @@
                     }
                     invokeSelect(state.current, itemEntry, event);
                 });
+                if (item.onContextMenu) {
+                    button.addEventListener('contextmenu', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        invokeContextMenu(state.current, itemEntry, event);
+                    });
+                }
 
                 menu.appendChild(button);
                 meta.itemElements.push(itemEntry);
@@ -1010,6 +1065,54 @@
             }
         }
 
+        function getContextMenuPosition(event, element) {
+            const hasMousePosition = event
+                && Number.isFinite(event.clientX)
+                && Number.isFinite(event.clientY)
+                && (event.button === 2 || event.clientX !== 0 || event.clientY !== 0);
+            if (hasMousePosition) {
+                return { x: event.clientX, y: event.clientY };
+            }
+
+            const rect = element.getBoundingClientRect();
+            return {
+                x: Math.round(Math.min(rect.right, rect.left + 24)),
+                y: Math.round(rect.top + Math.min(rect.height, 24))
+            };
+        }
+
+        function invokeContextMenu(current, itemEntry, event, position) {
+            if (!current
+                || state.current !== current
+                || !itemEntry
+                || current.entry !== itemEntry.menu.entry
+                || itemEntry.item.disabled
+                || !itemEntry.item.onContextMenu) {
+                return;
+            }
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const callback = itemEntry.item.onContextMenu;
+            const contextPosition = position || getContextMenuPosition(event, itemEntry.element);
+            const selection = {
+                id: itemEntry.item.id,
+                event: event,
+                element: itemEntry.element,
+                position: contextPosition
+            };
+
+            try {
+                Promise.resolve(callback(selection)).catch(function (error) {
+                    console.error('[userChrome.menu] Item context callback failed.', error);
+                });
+            } catch (error) {
+                console.error('[userChrome.menu] Item context callback failed.', error);
+            }
+        }
+
         function positionMenu(menu, x, y) {
             if (!menu || !menu.element.isConnected) {
                 return;
@@ -1113,6 +1216,14 @@
                 return entry.element === document.activeElement;
             });
 
+            if ((event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))
+                && activeEntry
+                && activeEntry.item.onContextMenu) {
+                event.preventDefault();
+                invokeContextMenu(current, activeEntry, event, getContextMenuPosition(null, activeEntry.element));
+                return;
+            }
+
             if (event.key === 'Escape') {
                 event.preventDefault();
                 close('escape');
@@ -1172,16 +1283,31 @@
             }
 
             const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : null;
-            const isInside = current.chain.some(function (menu) {
-                return eventPath
-                    ? eventPath.includes(menu.element)
-                    : menu.element.contains(event.target);
-            });
-            if (isInside) {
+            let containingSession = current;
+            while (containingSession) {
+                const isInside = containingSession.chain.some(function (menu) {
+                    return eventPath
+                        ? eventPath.includes(menu.element)
+                        : menu.element.contains(event.target);
+                });
+                if (isInside) {
+                    break;
+                }
+                containingSession = containingSession.previous;
+            }
+
+            if (containingSession === current) {
                 return;
             }
 
-            close('outside', false);
+            if (!containingSession) {
+                closeAll('outside', false);
+                return;
+            }
+
+            while (state.current && state.current !== containingSession) {
+                close('outside', false);
+            }
         }
 
         function hideEntryMenus(entry) {
@@ -1198,38 +1324,189 @@
             });
         }
 
+        function deactivateSession(current) {
+            document.removeEventListener('keydown', handleKeydown, true);
+            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
+            window.removeEventListener('mousedown', handleOutsideInteraction, true);
+            if (!current) {
+                return;
+            }
+
+            window.removeEventListener('resize', current.reposition);
+            window.removeEventListener('scroll', current.reposition, true);
+            if (current.anchorObserver) {
+                current.anchorObserver.disconnect();
+                current.anchorObserver = null;
+            }
+            current.suspended = true;
+        }
+
+        function activateSession(current) {
+            state.current = current;
+            current.suspended = false;
+            document.addEventListener('keydown', handleKeydown, true);
+            // 在 window 捕获阶段监听，避免 Vivaldi UI 的 document 事件处理拦截菜单外点击。
+            window.addEventListener('pointerdown', handleOutsideInteraction, true);
+            // 兼容未派发 PointerEvent 的鼠标输入环境；重复事件会因菜单已关闭而被忽略。
+            window.addEventListener('mousedown', handleOutsideInteraction, true);
+            window.addEventListener('resize', current.reposition);
+            window.addEventListener('scroll', current.reposition, true);
+
+            if (current.options.anchor && typeof MutationObserver === 'function') {
+                current.anchorObserver = new MutationObserver(function () {
+                    if (state.current === current && !current.options.anchor.isConnected) {
+                        close('anchor-removed', false);
+                    }
+                });
+                current.anchorObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+
+        function disposeSession(current) {
+            if (!current || current.closed) {
+                return false;
+            }
+
+            current.closed = true;
+            current.suspended = false;
+            hideEntryMenus(current.entry);
+            if (current.entry.dynamic) {
+                current.entry.element.remove();
+            }
+            return true;
+        }
+
+        function notifySessionClosed(current, reason) {
+            if (!current || !current.options.onClose) {
+                return;
+            }
+
+            try {
+                current.options.onClose(reason || 'close');
+            } catch (error) {
+                console.error('[userChrome.menu] Close callback failed.', error);
+            }
+        }
+
+        function canResumeSession(current) {
+            if (!current || current.closed || !current.entry.element.isConnected) {
+                return false;
+            }
+            if (!current.entry.dynamic && state.registry.get(current.entry.id) !== current.entry) {
+                return false;
+            }
+            return !current.options.anchor || current.options.anchor.isConnected;
+        }
+
+        function resumeSession(previous) {
+            let candidate = previous;
+            while (candidate) {
+                const next = candidate.previous;
+                if (canResumeSession(candidate)) {
+                    activateSession(candidate);
+                    positionChain(candidate);
+                    return candidate;
+                }
+
+                const closeReason = candidate.entry.element.isConnected
+                    && candidate.options.anchor
+                    && !candidate.options.anchor.isConnected
+                    ? 'anchor-removed'
+                    : 'unregister';
+                candidate.previous = null;
+                if (disposeSession(candidate)) {
+                    notifySessionClosed(candidate, closeReason);
+                }
+                candidate = next;
+            }
+
+            state.current = null;
+            return null;
+        }
+
         function close(reason, shouldRestoreFocus) {
             const current = state.current;
             if (!current) {
                 return;
             }
 
+            deactivateSession(current);
             state.current = null;
-            document.removeEventListener('keydown', handleKeydown, true);
-            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
-            window.removeEventListener('mousedown', handleOutsideInteraction, true);
-            window.removeEventListener('resize', current.reposition);
-            window.removeEventListener('scroll', current.reposition, true);
-            if (current.anchorObserver) {
-                current.anchorObserver.disconnect();
-            }
-
-            hideEntryMenus(current.entry);
-            if (current.entry.dynamic) {
-                current.entry.element.remove();
-            }
+            const previous = current.previous;
+            current.previous = null;
+            disposeSession(current);
+            resumeSession(previous);
 
             if (shouldRestoreFocus !== false) {
                 restoreFocus(current);
             }
+            notifySessionClosed(current, reason);
+        }
 
-            if (current.options.onClose) {
-                try {
-                    current.options.onClose(reason || 'close');
-                } catch (error) {
-                    console.error('[userChrome.menu] Close callback failed.', error);
-                }
+        function closeAll(reason, shouldRestoreFocus) {
+            const top = state.current;
+            if (!top) {
+                return;
             }
+
+            deactivateSession(top);
+            state.current = null;
+            const closedSessions = [];
+            let current = top;
+            while (current) {
+                const previous = current.previous;
+                current.previous = null;
+                if (disposeSession(current)) {
+                    closedSessions.push(current);
+                }
+                current = previous;
+            }
+
+            if (shouldRestoreFocus !== false) {
+                restoreFocus(top);
+            }
+            closedSessions.forEach(function (session) {
+                notifySessionClosed(session, reason);
+            });
+        }
+
+        function closeSession(target, reason, shouldRestoreFocus) {
+            if (!target || target.closed) {
+                return false;
+            }
+            if (state.current === target) {
+                close(reason, shouldRestoreFocus);
+                return true;
+            }
+
+            let child = state.current;
+            while (child && child.previous !== target) {
+                child = child.previous;
+            }
+            if (!child) {
+                return false;
+            }
+
+            child.previous = target.previous;
+            target.previous = null;
+            if (disposeSession(target)) {
+                notifySessionClosed(target, reason);
+            }
+            return true;
+        }
+
+        function closeEntrySession(entry, reason, shouldRestoreFocus) {
+            let current = state.current;
+            while (current) {
+                if (current.entry === entry) {
+                    return closeSession(current, reason, shouldRestoreFocus);
+                }
+                current = current.previous;
+            }
+            return false;
         }
 
         function openEntry(entry, options) {
@@ -1238,10 +1515,15 @@
                 return null;
             }
 
-            close('replace', false);
-            if (!entry.element.isConnected) {
-                root.appendChild(entry.element);
+            let previous = null;
+            if (options.preserveCurrent && state.current && state.current.entry !== entry) {
+                previous = state.current;
+                deactivateSession(previous);
+                state.current = null;
+            } else {
+                closeAll('replace', false);
             }
+            root.appendChild(entry.element);
             hideEntryMenus(entry);
 
             const current = {
@@ -1251,36 +1533,17 @@
                 activeMenu: entry.menus[0],
                 suppressFocusOpen: null,
                 reposition: null,
-                anchorObserver: null
+                anchorObserver: null,
+                previous: previous,
+                suspended: false,
+                closed: false
             };
-            state.current = current;
             entry.element.hidden = false;
 
             current.reposition = function () {
                 positionChain(current);
             };
-            if (options.anchor && typeof MutationObserver === 'function') {
-                current.anchorObserver = new MutationObserver(function () {
-                    if (state.current !== current) {
-                        current.anchorObserver.disconnect();
-                        return;
-                    }
-                    if (!options.anchor.isConnected) {
-                        close('anchor-removed', false);
-                    }
-                });
-                current.anchorObserver.observe(document.documentElement, {
-                    childList: true,
-                    subtree: true
-                });
-            }
-            document.addEventListener('keydown', handleKeydown, true);
-            // 在 window 捕获阶段监听，避免 Vivaldi UI 的 document 事件处理拦截菜单外点击。
-            window.addEventListener('pointerdown', handleOutsideInteraction, true);
-            // 兼容未派发 PointerEvent 的鼠标输入环境；重复事件会因菜单已关闭而被忽略。
-            window.addEventListener('mousedown', handleOutsideInteraction, true);
-            window.addEventListener('resize', current.reposition);
-            window.addEventListener('scroll', current.reposition, true);
+            activateSession(current);
             positionChain(current);
 
             requestAnimationFrame(function () {
@@ -1291,9 +1554,7 @@
 
             return {
                 close: function (reason) {
-                    if (state.current === current) {
-                        close(reason || 'close');
-                    }
+                    closeSession(current, reason || 'close', true);
                 }
             };
         }
@@ -1309,9 +1570,7 @@
                     return openEntry(entry, normalizeOpenOptions(options, false));
                 },
                 close: function (reason) {
-                    if (state.current && state.current.entry === entry) {
-                        close(reason || 'close');
-                    }
+                    closeEntrySession(entry, reason || 'close', true);
                 },
                 unregister: function () {
                     if (state.registry.get(entry.id) === entry) {
@@ -1338,7 +1597,13 @@
                     unregister(normalized.id, 'replace');
                 }
 
-                const entry = createMenuEntry(normalized.id, normalized.ariaLabel, normalized.items, false);
+                const entry = createMenuEntry(
+                    normalized.id,
+                    normalized.ariaLabel,
+                    normalized.className,
+                    normalized.items,
+                    false
+                );
                 root.appendChild(entry.element);
                 entry.controller = createController(entry);
                 state.registry.set(entry.id, entry);
@@ -1355,9 +1620,7 @@
             }
 
             state.registry.delete(id);
-            if (state.current && state.current.entry === entry) {
-                close(reason || 'unregister', false);
-            }
+            closeEntrySession(entry, reason || 'unregister', false);
             entry.element.remove();
             return true;
         }
@@ -1373,7 +1636,13 @@
         function open(options) {
             const normalized = normalizeOpenOptions(options, true);
             const id = '__dynamic-menu-' + (++state.dynamicCounter);
-            const entry = createMenuEntry(id, normalized.ariaLabel, normalized.items, true);
+            const entry = createMenuEntry(
+                id,
+                normalized.ariaLabel,
+                normalized.className,
+                normalized.items,
+                true
+            );
             return openEntry(entry, normalized);
         }
 

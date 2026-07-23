@@ -12,7 +12,7 @@
 
 - 菜单注册后常驻在统一容器中，打开和关闭只改变显示状态。
 - 支持单层菜单和静态声明的子菜单。
-- 同一时间只允许一组 popup 链打开。
+- 同一时间只允许一组 popup 链接收交互；临时菜单可暂存并覆盖当前 popup。
 - 保留锚点定位、坐标定位、外部点击关闭、键盘导航和焦点恢复。
 - API 名称贴近 popupset 的概念，但实现保持 Vivaldi/DOM 友好。
 - 暂不展开书签工具栏重绘；本规格只定义菜单基础能力。
@@ -54,6 +54,7 @@
 userChrome_js.menu.register({
     id: 'menu-test-popup',
     ariaLabel: '菜单测试',
+    className: 'menu-test-native',
     items: [
         {
             id: 'refresh',
@@ -71,6 +72,7 @@ userChrome_js.menu.register({
 
 - `id: string`：菜单唯一标识。重复注册同一个 `id` 时替换旧菜单。
 - `ariaLabel?: string`：菜单可访问名称。
+- `className?: string`：附加到顶层菜单及其子菜单的 CSS 类名，只保留合法类名 token。
 - `items: MenuItem[]`：菜单项列表。
 
 返回控制器对象：
@@ -112,9 +114,11 @@ userChrome_js.menu.openPopup('menu-test-popup', {
 - `{ anchor: HTMLElement }`：菜单锚定到元素下方。
 - `{ position: { x: number, y: number } }`：菜单锚定到视口坐标。
 
+可选的 `preserveCurrent: true` 会暂存当前 popup，并在新菜单关闭后恢复其定位、监听器和焦点。默认值为 `false`，即打开新菜单时关闭所有已有菜单。
+
 ### `userChrome_js.menu.closePopup(reason?)`
 
-关闭当前打开的 popup 链。
+关闭当前打开的 popup 链。当前菜单通过 `preserveCurrent` 叠加时，会恢复被暂存的 popup。
 
 ```js
 userChrome_js.menu.closePopup('manual');
@@ -130,7 +134,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 
 ### 兼容 API
 
-`userChrome_js.menu.open(options)` 保持原有调用方式：传入 `items` 以及 `anchor` 或 `position`，关闭时自动移除动态菜单 DOM。动态菜单也复用相同的静态 `children` 和级联交互实现。
+`userChrome_js.menu.open(options)` 保持原有调用方式：传入 `items` 以及 `anchor` 或 `position`，关闭时自动移除动态菜单 DOM。动态菜单也支持 `className`、`preserveCurrent`，并复用相同的静态 `children` 和级联交互实现。
 
 `userChrome_js.menu.close(reason?)` 保留为关闭当前 popup 链的兼容入口，行为与 `closePopup(reason?)` 一致。
 
@@ -147,6 +151,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
  * @property {string} [shortcut]
  * @property {MenuItem[]} [children]
  * @property {(selection: MenuSelection) => void|Promise<void>} [onSelect]
+ * @property {(selection: MenuContextSelection) => void|Promise<void>} [onContextMenu]
  */
 ```
 
@@ -206,6 +211,44 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 }
 ```
 
+对应回调类型：
+
+```js
+/**
+ * @typedef {Object} MenuSelection
+ * @property {string} id
+ * @property {boolean} checked
+ * @property {boolean} previousChecked
+ * @property {MouseEvent|KeyboardEvent} event
+ *
+ * @typedef {Object} MenuContextSelection
+ * @property {string} id
+ * @property {MouseEvent|KeyboardEvent} event
+ * @property {HTMLElement} element
+ * @property {{x: number, y: number}} position
+ */
+```
+
+右键回调可用于普通项或分隔项：
+
+```js
+{
+    id: 'bookmark',
+    label: '书签',
+    onContextMenu(selection) {
+        userChrome_js.menu.open({
+            position: selection.position,
+            restoreFocus: selection.element,
+            preserveCurrent: true,
+            className: 'bookmark-context-menu',
+            items: [{ id: 'delete', label: '删除', onSelect: deleteBookmark }]
+        });
+    }
+}
+```
+
+鼠标右键、菜单键和 `Shift+F10` 都会触发 `onContextMenu`。菜单 API 会阻止浏览器原生菜单，但不会在回调前关闭原 popup；参数包含 `id`、原始 `event`、菜单项 `element` 和视口坐标 `position: { x, y }`。示例使用 `preserveCurrent` 叠加右键菜单，关闭后恢复原 popup 和来源项目焦点。
+
 ## 子菜单行为
 
 子菜单随父菜单一起注册为常驻 DOM，关闭时隐藏，不动态销毁。
@@ -220,8 +263,8 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 关闭规则：
 
 - 按 `ArrowLeft` 关闭当前子菜单，并把焦点还给父菜单项。
-- 按 `Escape` 关闭整组 popup 链，并恢复触发元素焦点。
-- 点击 popup 链外部关闭整组 popup 链。
+- 按 `Escape` 关闭当前 popup 链，并恢复触发元素焦点；存在被暂存的 popup 时恢复它。
+- 点击当前菜单之外、但位于被暂存 popup 内时只关闭叠菜单；点击所有菜单之外时关闭整组会话。
 - 锚点元素被移除时关闭整组 popup 链。
 
 定位规则：
@@ -332,6 +375,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
 
 - `menu.open(options)` 的原有调用方式和关闭回调保持兼容。
 - 注册、替换、打开、关闭和注销常驻菜单时不残留 DOM 或全局监听器。
+- `preserveCurrent` 叠加菜单关闭后恢复原 popup；原 popup 在暂存期间失效时不再恢复。
 - 鼠标和键盘均可打开任意层级的静态子菜单。
 - 同一时间只显示一条 popup 链，子菜单在视口边缘正确翻转或修正位置。
 - 示例代码不依赖 Firefox XUL、`popupset`、`menupopup` 或 `openPopup` 原生实现。

@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            menuTest_Button.ac.js
-// @description     侧边栏 Popupset 菜单测试按钮，覆盖注册菜单、级联子菜单、锚定/坐标定位与状态重注册
+// @description     侧边栏 Popupset 菜单测试按钮，覆盖注册菜单、级联子菜单、锚定/坐标定位、菜单项右键与状态重注册
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260722
+// @version         20260723.1
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -31,6 +31,39 @@
         return window.userChrome_js && window.userChrome_js.menu;
     }
 
+    function openContextTestMenu(selection, sourceLabel) {
+        const menu = getMenuApi();
+        if (!menu || typeof menu.open !== 'function') {
+            notify('动态菜单 API 尚未加载。', 'error');
+            return;
+        }
+
+        try {
+            const session = menu.open({
+                position: selection.position,
+                restoreFocus: selection.element,
+                preserveCurrent: true,
+                className: 'userchrome-menu-test-popup',
+                ariaLabel: sourceLabel + '右键测试菜单',
+                items: [
+                    {
+                        id: 'return-to-popup',
+                        label: '关闭并返回原 Popupset',
+                        onSelect: function () {
+                            notify(sourceLabel + '右键菜单已关闭，原 Popupset 应保持打开。', 'success');
+                        }
+                    }
+                ]
+            });
+            if (!session) {
+                notify('右键测试菜单打开失败。', 'error');
+            }
+        } catch (error) {
+            console.error('[menuTest_Button] Failed to open context test menu.', error);
+            notify('右键测试菜单打开失败，请查看控制台。', 'error');
+        }
+    }
+
     function createItems() {
         return [
             {
@@ -39,6 +72,9 @@
                 shortcut: 'Enter',
                 onSelect: function () {
                     notify(state.openSource + '菜单项已触发。', 'success');
+                },
+                onContextMenu: function (selection) {
+                    openContextTestMenu(selection, '普通菜单项');
                 }
             },
             {
@@ -53,7 +89,13 @@
                     notify('紧凑模式示例已' + (state.compactMode ? '启用。' : '关闭。'));
                 }
             },
-            { type: 'separator' },
+            {
+                id: 'context-separator',
+                type: 'separator',
+                onContextMenu: function (selection) {
+                    openContextTestMenu(selection, '分隔项');
+                }
+            },
             {
                 id: 'first-level',
                 label: '一级子菜单',
@@ -142,6 +184,7 @@
             const controller = menu.register({
                 id: POPUP_ID,
                 ariaLabel: 'Popupset 菜单测试',
+                className: 'userchrome-menu-test-popup',
                 items: createItems()
             });
             if (!controller) {
