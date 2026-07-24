@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.7
+// @version         20260724.10
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -51,13 +51,29 @@
     ];
     const BOOKMARKS_FOLDER_PREF = 'vivaldi.bookmarks.bar.folder_ids';
     const BOOKMARKS_DISPLAY_PREF = 'vivaldi.bookmarks.bar.display';
+    const BOOKMARKS_SORTING_PREF = 'vivaldi.bookmarks.bar.sorting';
     const DEFAULT_FOLDER_ID = '1';
+    const SORT_ORDER = Object.freeze({
+        none: 1,
+        ascending: 2,
+        descending: 3
+    });
+    const SORT_FIELDS = Object.freeze([
+        'manually',
+        'title',
+        'url',
+        'nickname',
+        'description',
+        'dateAdded'
+    ]);
     const SEPARATOR_URL = 'http://bookmark.placeholder.url/';
     const FOLDER_POPUP_PREFIX = 'userchrome-bookmarks-folder:';
     const MORE_POPUP_ID = 'userchrome-bookmarks-more';
     const MORE_BUTTON_ID = 'userchrome-custom-bookmarks-more';
     const BOOKMARK_POPUP_CLASS = 'userchrome-bookmark-popup-menu';
     const CONTEXT_MENU_CLASS = 'userchrome-bookmark-context-menu';
+    const BOOKMARK_BAR_CONTEXT_MENU_CLASS = 'userchrome-bookmark-bar-context-menu';
+    const BOOKMARK_BAR_CONTEXT_MENU_PENDING_CLASS = 'userchrome-bookmark-bar-context-menu-pending';
     const DIALOG_ID = 'userchrome-bookmark-dialog';
     const BOOKMARK_BAR_CLASSES = Object.freeze({
         item: 'userchrome-custom-bookmarks-bar-item',
@@ -105,6 +121,10 @@
         data: {
             folderIds: [],
             displayMode: 'default',
+            sorting: {
+                sortOrder: SORT_ORDER.none,
+                sortField: 'manually'
+            },
             roots: [],
             topLevel: [],
             relevantIds: new Set(),
@@ -443,6 +463,26 @@
                 display: none;
             }
 
+            #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-item[aria-haspopup="menu"] {
+                grid-template-columns: 18px minmax(0, 1fr) auto 14px;
+            }
+
+            #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-item[aria-haspopup="menu"] .userchrome-menu-arrow {
+                display: inline-block;
+                width: 14px;
+                margin-left: 4px;
+            }
+
+            #userchrome-menu-root .${CONTEXT_MENU_CLASS}.${BOOKMARK_BAR_CONTEXT_MENU_CLASS} .userchrome-menu-item:focus-visible:not(:hover):not([aria-expanded="true"]) {
+                background: transparent;
+                color: inherit;
+            }
+
+            #userchrome-menu-root .${CONTEXT_MENU_CLASS}.${BOOKMARK_BAR_CONTEXT_MENU_CLASS}.${BOOKMARK_BAR_CONTEXT_MENU_PENDING_CLASS} .userchrome-menu-item:hover:not([aria-expanded="true"]) {
+                background: transparent;
+                color: inherit;
+            }
+
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator {
                 margin: 4px 0;
                 background: color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent);
@@ -605,6 +645,15 @@
         }
     }
 
+    async function writePreference (path, value) {
+        const prefs = window.vivaldi && window.vivaldi.prefs;
+        if (!prefs || typeof prefs.set !== 'function') {
+            throw new Error('vivaldi.prefs.set is unavailable for ' + path + '.');
+        }
+        await prefs.set({ path, value });
+        log('Wrote preference.', { path, value });
+    }
+
     function normalizeFolderIds (value) {
         let values = value;
         if (typeof values === 'string') {
@@ -633,6 +682,24 @@
     function normalizeDisplayMode (value) {
         const modes = ['default', 'text', 'icon', 'iconexceptfolders'];
         return modes.includes(value) ? value : 'default';
+    }
+
+    function normalizeSorting (value) {
+        const source = value && typeof value === 'object' ? value : {};
+        const sortField = SORT_FIELDS.includes(source.sortField) ? source.sortField : 'manually';
+        let sortOrder = Number(source.sortOrder);
+        if (sortField === 'manually') {
+            sortOrder = SORT_ORDER.none;
+        } else if (![SORT_ORDER.ascending, SORT_ORDER.descending].includes(sortOrder)) {
+            sortOrder = SORT_ORDER.ascending;
+        }
+        return { sortOrder, sortField };
+    }
+
+    function isManualSorting (sorting) {
+        return !sorting
+            || sorting.sortOrder === SORT_ORDER.none
+            || sorting.sortField === 'manually';
     }
 
     function getBookmarkError () {
@@ -719,14 +786,28 @@
         const children = Array.isArray(node && node.children)
             ? node.children.map(cloneBookmarkNode)
             : [];
-        return {
+        const clone = {
             id: String(node && typeof node.id !== 'undefined' ? node.id : ''),
             title: typeof (node && node.title) === 'string' ? node.title : '',
-            url: typeof (node && node.url) === 'string' ? node.url : '',
             parentId: String(node && typeof node.parentId !== 'undefined' ? node.parentId : ''),
             index: Number.isInteger(node && node.index) ? node.index : -1,
+            trash: Boolean(node && node.trash),
             children: children
         };
+        ['url', 'nickname', 'description'].forEach(function (field) {
+            if (node
+                && Object.prototype.hasOwnProperty.call(node, field)
+                && typeof node[field] === 'string') {
+                clone[field] = node[field];
+            }
+        });
+        if (node && Object.prototype.hasOwnProperty.call(node, 'dateAdded')) {
+            const dateAdded = Number(node.dateAdded);
+            if (Number.isFinite(dateAdded)) {
+                clone.dateAdded = dateAdded;
+            }
+        }
+        return clone;
     }
 
     function getNodeDescendantIds (node) {
@@ -798,6 +879,60 @@
 
     function isFolderNode (node) {
         return Boolean(node && !node.url && Array.isArray(node.children));
+    }
+
+    function compareBookmarkSortValues (first, second, sortOrder) {
+        if (sortOrder <= SORT_ORDER.none) {
+            return 0;
+        }
+        if (typeof first === 'number' && typeof second === 'number') {
+            return sortOrder === SORT_ORDER.ascending ? first - second : second - first;
+        }
+        if (!first && !second) {
+            return 0;
+        }
+        if (!first) {
+            return sortOrder === SORT_ORDER.ascending ? 1 : -1;
+        }
+        if (!second) {
+            return sortOrder === SORT_ORDER.ascending ? -1 : 1;
+        }
+        const compared = String(first).localeCompare(String(second));
+        return sortOrder === SORT_ORDER.ascending ? compared : -compared;
+    }
+
+    function compareBookmarkNodes (first, second, sorting) {
+        if (first.trash !== second.trash) {
+            return first.trash ? 1 : -1;
+        }
+        const firstFolder = isFolderNode(first);
+        const secondFolder = isFolderNode(second);
+        if (firstFolder !== secondFolder) {
+            return firstFolder ? -1 : 1;
+        }
+
+        let sortField = sorting.sortField;
+        const firstHasField = Object.prototype.hasOwnProperty.call(first, sortField);
+        const secondHasField = Object.prototype.hasOwnProperty.call(second, sortField);
+        if (!firstHasField && !secondHasField) {
+            sortField = first.title || second.title ? 'title' : 'dateAdded';
+        }
+        return compareBookmarkSortValues(first[sortField], second[sortField], sorting.sortOrder);
+    }
+
+    function sortBookmarkTree (nodes, sorting) {
+        if (isManualSorting(sorting)) {
+            return nodes;
+        }
+        nodes.forEach(function (node) {
+            if (isFolderNode(node)) {
+                sortBookmarkTree(node.children, sorting);
+            }
+        });
+        nodes.sort(function (first, second) {
+            return compareBookmarkNodes(first, second, sorting);
+        });
+        return nodes;
     }
 
     function createDialogField (field) {
@@ -1294,10 +1429,11 @@
         return urls;
     }
 
-    function getBookmarkDataSignature (folderIds, displayMode, roots) {
+    function getBookmarkDataSignature (folderIds, displayMode, sorting, roots) {
         return JSON.stringify({
             folderIds: folderIds,
             displayMode: displayMode,
+            sorting: sorting,
             roots: roots
         });
     }
@@ -1322,12 +1458,17 @@
             BOOKMARKS_DISPLAY_PREF,
             'default'
         ));
+        const sorting = normalizeSorting(await readPreference(
+            BOOKMARKS_SORTING_PREF,
+            { sortOrder: SORT_ORDER.none, sortField: 'manually' }
+        ));
         const roots = [];
 
         log('Loading bookmark roots.', {
             reason,
             folderIds: configuredFolderIds,
-            displayMode
+            displayMode,
+            sorting
         });
 
         for (const folderId of configuredFolderIds) {
@@ -1339,6 +1480,7 @@
                     continue;
                 }
                 const root = cloneBookmarkNode(rawRoot);
+                sortBookmarkTree(root.children, sorting);
                 roots.push(root);
                 log('Loaded bookmark root.', {
                     folderId,
@@ -1366,12 +1508,13 @@
         });
 
         // Only rebuild DOM when the bookmark snapshot actually changed, so open menus stay open.
-        const signature = getBookmarkDataSignature(configuredFolderIds, displayMode, roots);
+        const signature = getBookmarkDataSignature(configuredFolderIds, displayMode, sorting, roots);
         const changed = signature !== state.data.signature;
 
         state.data = {
             folderIds: configuredFolderIds,
             displayMode: displayMode,
+            sorting: sorting,
             roots: roots,
             topLevel: topLevel,
             relevantIds: relevantIds,
@@ -1417,7 +1560,12 @@
     }
 
     function createBookmarkMenuItems (nodes) {
-        const items = nodes.map(function (node) {
+        const visibleNodes = isManualSorting(state.data.sorting)
+            ? nodes
+            : nodes.filter(function (node) {
+                return !isSeparatorBookmark(node);
+            });
+        const items = visibleNodes.map(function (node) {
             if (isSeparatorBookmark(node)) {
                 return {
                     id: getMenuItemId('separator-', node),
@@ -1468,6 +1616,135 @@
             { type: 'separator' },
             ...createBookmarkMenuItems(folder.children)
         ];
+    }
+
+    function getBookmarkBarFolder () {
+        return state.data.roots.length ? state.data.roots[0] : null;
+    }
+
+    async function updateBookmarkBarSorting (sorting) {
+        const normalized = normalizeSorting(sorting);
+        try {
+            await writePreference(BOOKMARKS_SORTING_PREF, normalized);
+            scheduleRefresh('bookmark sorting changed', true);
+        } catch (error) {
+            reportError('Failed to update bookmark bar sorting.', error);
+            notify('更新书签栏排序失败，请查看控制台。', 'error');
+        }
+    }
+
+    function selectBookmarkSortField (sortField) {
+        const current = state.data.sorting;
+        const sortOrder = sortField === 'manually'
+            ? SORT_ORDER.none
+            : (current.sortOrder === SORT_ORDER.none ? SORT_ORDER.ascending : current.sortOrder);
+        return updateBookmarkBarSorting({ sortOrder, sortField });
+    }
+
+    function createBookmarkSortMenuItems () {
+        const sorting = state.data.sorting;
+        const fields = [
+            { id: 'manual', label: '手动', sortField: 'manually' },
+            { id: 'title', label: '按标题', sortField: 'title' },
+            { id: 'url', label: '按地址', sortField: 'url' },
+            { id: 'nickname', label: '按昵称', sortField: 'nickname' },
+            { id: 'description', label: '按描述', sortField: 'description' },
+            { id: 'date-added', label: '按创建日期', sortField: 'dateAdded' }
+        ];
+        const items = fields.map(function (field) {
+            return {
+                id: 'sort-' + field.id,
+                type: 'checkbox',
+                label: field.label,
+                checked: sorting.sortField === field.sortField,
+                onSelect: function () {
+                    return selectBookmarkSortField(field.sortField);
+                }
+            };
+        });
+
+        if (!isManualSorting(sorting)) {
+            const nextOrder = sorting.sortOrder === SORT_ORDER.ascending
+                ? SORT_ORDER.descending
+                : SORT_ORDER.ascending;
+            items.push(
+                { type: 'separator' },
+                {
+                    id: nextOrder === SORT_ORDER.ascending ? 'sort-ascending' : 'sort-descending',
+                    label: nextOrder === SORT_ORDER.ascending ? '升序' : '降序',
+                    onSelect: function () {
+                        return updateBookmarkBarSorting({
+                            sortOrder: nextOrder,
+                            sortField: sorting.sortField
+                        });
+                    }
+                }
+            );
+        }
+        return items;
+    }
+
+    function createBookmarkBarContextItems (folder) {
+        const items = [
+            {
+                id: 'add-current-page',
+                label: '添加当前标签页',
+                shortcut: 'A',
+                onSelect: function () {
+                    return addCurrentPageToFolder(folder);
+                }
+            },
+            { type: 'separator' },
+            {
+                id: 'new-bookmark',
+                label: '新建书签',
+                shortcut: 'N',
+                onSelect: function () {
+                    return createNewBookmark(folder);
+                }
+            },
+            {
+                id: 'new-folder',
+                label: '新建文件夹',
+                shortcut: 'F',
+                onSelect: function () {
+                    return createNewFolder(folder);
+                }
+            }
+        ];
+
+        if (isManualSorting(state.data.sorting)) {
+            items.push({
+                id: 'new-separator',
+                label: '新增分隔线',
+                shortcut: 'S',
+                onSelect: function () {
+                    return createSeparator(folder);
+                }
+            });
+        }
+
+        const clipboard = readBookmarkClipboard();
+        items.push(
+            { type: 'separator' },
+            {
+                id: 'sort',
+                label: '排序',
+                shortcut: 'O',
+                children: createBookmarkSortMenuItems()
+            },
+            { type: 'separator' },
+            {
+                id: 'paste',
+                label: '粘贴',
+                shortcut: 'P',
+                disabled: !canPasteIntoFolder(folder, clipboard),
+                onSelect: function () {
+                    return pasteIntoFolder(folder);
+                }
+            }
+        );
+        return items;
     }
 
     function createOpenContextItems (node) {
@@ -1550,15 +1827,19 @@
                     onSelect: function () {
                         return createNewFolder(node);
                     }
-                },
-                {
+                }
+            );
+            if (isManualSorting(state.data.sorting)) {
+                items.push({
                     id: 'new-separator',
                     label: '新增分隔线',
                     shortcut: 'S',
                     onSelect: function () {
                         return createSeparator(node);
                     }
-                },
+                });
+            }
+            items.push(
                 { type: 'separator' },
                 {
                     id: 'edit',
@@ -1681,6 +1962,56 @@
         }
     }
 
+    function openBookmarkBarContextMenu (folder, position, restoreFocus) {
+        const menu = getMenuApi();
+        if (!menu || typeof menu.open !== 'function') {
+            notify('自绘菜单 API 尚未加载。', 'error');
+            return;
+        }
+        if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+            warn('Invalid bookmark bar context menu position.', { folderId: folder.id, position });
+            return;
+        }
+
+        try {
+            const updateMenuInteractionMode = function (event) {
+                const keyboardMode = event.type === 'keydown';
+                document.querySelectorAll('#userchrome-menu-root .' + BOOKMARK_BAR_CONTEXT_MENU_CLASS).forEach(function (element) {
+                    element.classList.remove(BOOKMARK_BAR_CONTEXT_MENU_PENDING_CLASS);
+                    if (keyboardMode) {
+                        element.classList.remove(BOOKMARK_BAR_CONTEXT_MENU_CLASS);
+                    }
+                });
+                window.removeEventListener('pointermove', updateMenuInteractionMode, true);
+                if (keyboardMode) {
+                    window.removeEventListener('keydown', updateMenuInteractionMode, true);
+                }
+            };
+            const session = menu.open({
+                position: position,
+                restoreFocus: restoreFocus instanceof HTMLElement ? restoreFocus : null,
+                className: CONTEXT_MENU_CLASS
+                    + ' ' + BOOKMARK_BAR_CONTEXT_MENU_CLASS
+                    + ' ' + BOOKMARK_BAR_CONTEXT_MENU_PENDING_CLASS,
+                ariaLabel: '自绘书签栏空白处右键菜单',
+                items: createBookmarkBarContextItems(folder),
+                onClose: function () {
+                    window.removeEventListener('keydown', updateMenuInteractionMode, true);
+                    window.removeEventListener('pointermove', updateMenuInteractionMode, true);
+                }
+            });
+            if (!session) {
+                throw new Error('Menu root is unavailable.');
+            }
+            window.addEventListener('keydown', updateMenuInteractionMode, true);
+            window.addEventListener('pointermove', updateMenuInteractionMode, true);
+            log('Opened bookmark bar context menu.', { folderId: folder.id });
+        } catch (error) {
+            reportError('Failed to open bookmark bar context menu: ' + folder.id, error);
+            notify('打开书签栏右键菜单失败，请查看控制台。', 'error');
+        }
+    }
+
     function getElementContextPosition (element) {
         const rect = element.getBoundingClientRect();
         return {
@@ -1705,6 +2036,30 @@
             event.preventDefault();
             event.stopPropagation();
             openBookmarkContextMenu(node, getElementContextPosition(element), element);
+        });
+    }
+
+    function attachBookmarkBarContextMenu (row) {
+        row.addEventListener('contextmenu', function (event) {
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target || target.closest('.' + BOOKMARK_BAR_CLASSES.item + ', .' + BOOKMARK_BAR_CLASSES.more)) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const folder = getBookmarkBarFolder();
+            if (!folder) {
+                notify('未找到书签工具栏文件夹。', 'warn');
+                return;
+            }
+            const restoreFocus = document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+            openBookmarkBarContextMenu(folder, {
+                x: event.clientX,
+                y: event.clientY
+            }, restoreFocus);
         });
     }
 
@@ -2322,7 +2677,12 @@
         state.hiddenNodes = [];
         syncMoreButtonVisibility();
 
-        if (!state.data.topLevel.length) {
+        const topLevel = isManualSorting(state.data.sorting)
+            ? state.data.topLevel
+            : state.data.topLevel.filter(function (node) {
+                return !isSeparatorBookmark(node);
+            });
+        if (!topLevel.length) {
             const empty = createElement('span', {
                 class: BOOKMARK_BAR_CLASSES.empty,
                 innerText: '暂无书签'
@@ -2336,7 +2696,7 @@
         }
 
         state.emptyState = null;
-        state.data.topLevel.forEach(function (node, index) {
+        topLevel.forEach(function (node, index) {
             const separator = isSeparatorBookmark(node);
             const element = separator
                 ? createBookmarkSeparator(node)
@@ -2415,6 +2775,7 @@
             'aria-label': ROW_LABEL
         });
         attachRowEventBoundary(row);
+        attachBookmarkBarContextMenu(row);
         const items = createElement('div', { class: 'observer' });
         const moreButton = createElement('button', {
             id: MORE_BUTTON_ID,
@@ -2613,6 +2974,21 @@
             scheduleRefresh('bookmark import ended', true);
         });
 
+        const bookmarksPrivate = window.vivaldi && window.vivaldi.bookmarksPrivate;
+        const metaInfoChanged = bookmarksPrivate && bookmarksPrivate.onMetaInfoChanged;
+        if (metaInfoChanged && typeof metaInfoChanged.addListener === 'function') {
+            const handler = function (id) {
+                if (isRelevantEvent('changed', id)) {
+                    scheduleRefresh('bookmark metadata changed');
+                }
+            };
+            metaInfoChanged.addListener(handler);
+            state.bookmarkListeners.push({ event: metaInfoChanged, handler });
+            log('Attached bookmark metadata event.');
+        } else {
+            warn('vivaldi.bookmarksPrivate.onMetaInfoChanged is unavailable.');
+        }
+
         const prefs = window.vivaldi && window.vivaldi.prefs;
         if (prefs && prefs.onChanged && typeof prefs.onChanged.addListener === 'function') {
             state.prefListener = function (...args) {
@@ -2620,7 +2996,9 @@
                 const path = typeof first === 'string'
                     ? first
                     : first && first.path;
-                if (path === BOOKMARKS_FOLDER_PREF || path === BOOKMARKS_DISPLAY_PREF) {
+                if (path === BOOKMARKS_FOLDER_PREF
+                    || path === BOOKMARKS_DISPLAY_PREF
+                    || path === BOOKMARKS_SORTING_PREF) {
                     log('Bookmark preference changed.', { path, args });
                     scheduleRefresh('bookmark preference changed', true);
                 }

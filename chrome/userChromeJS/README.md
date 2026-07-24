@@ -9,7 +9,7 @@
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的四种显示模式渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供文件夹 Popupset、溢出菜单和完整右键操作 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供文件夹 Popupset、溢出菜单及项目/空白区域右键操作 |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -182,16 +182,18 @@ element.addEventListener('contextmenu', function (event) {
 
 ### `customBookmarksBar.ac.js` 自绘书签栏
 
-自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids` 与 `vivaldi.bookmarks.bar.display`。样式以 Vivaldi 8.1.4087.48 的 `style/common.css` 为基准，并使用脚本自身的作用域选择器复刻原生书签栏外观：
+自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids`、`vivaldi.bookmarks.bar.display` 与 `vivaldi.bookmarks.bar.sorting`。样式以 Vivaldi 8.1.4087.48 的 `style/common.css` 为基准，并使用脚本自身的作用域选择器复刻原生书签栏外观：
 
 - 保留挂载容器的 `div.observer` class；自绘书签项子树和外置“更多书签”按钮统一使用 `userchrome-custom-bookmarks-bar-*` class，避免进入原生 `bookmarkbarItem` 查询和样式分支
 - 支持 `default`、`text`、`icon`、`iconexceptfolders` 四种原生显示模式；纯文本模式下文件夹显示 10px chevron，图标模式仍保留可访问名称与提示
 - 复刻原生按钮布局、主题背景、hover/active/focus、图标、标题截断、分隔线和 Break Mode 状态；`#userchrome-custom-bookmarks-bar` 与 `#userchrome-custom-bookmarks-more` 保持稳定
 - 网址书签和文件夹支持当前标签、新标签、后台标签、新窗口及隐身窗口打开
 - 文件夹支持添加当前标签页、新建书签、新建文件夹、新增分隔线和粘贴
+- 书签栏空白区域提供原生顺序的新增、排序和粘贴菜单；鼠标打开时不预高亮首项，移出项目后不残留高亮，键盘操作仍保留焦点反馈；排序支持手动、标题、地址、昵称、描述、创建日期及升降序，作用于当前书签栏根文件夹
+- 排序沿用 `vivaldi.bookmarks.bar.sorting` 的展示语义，不改写书签顺序；非手动排序时隐藏分隔线及“新增分隔线”操作
 - 书签项目支持编辑、重命名、剪切、复制和删除；编辑器使用原生 `<dialog>`
 - 剪贴板通过版本化 `localStorage` 保存，复制文件夹时递归重建，剪切时调用 `chrome.bookmarks.move`
-- 写操作依赖 `chrome.bookmarks` 事件刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
+- 写操作依赖 `chrome.bookmarks` 事件刷新，昵称/描述排序可通过 `vivaldi.bookmarksPrivate.onMetaInfoChanged` 即时刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
 - 网址书签的图标通过 `chrome://favicon2/` 获取，书签栏使用 16/24/32px `srcset` 适配不同显示缩放
 - Popupset 内右键会暂存原书签菜单，关闭右键菜单后返回原位置；右键菜单使用紧凑菜单项、12px 上下留白和独立圆角，分隔线不会撑开横向滚动区域，各级文件夹子菜单保持一致的边框和阴影
 - 键盘、鼠标、指针、触摸和拖拽事件在 `#userchrome-custom-bookmarks-bar` 边界停止冒泡，避免自绘行的操作进入原生 `.bookmark-bar` 的委托监听器
