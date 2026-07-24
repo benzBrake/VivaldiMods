@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.1
+// @version         0.2.3
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260724 收紧菜单项间距并禁止菜单横向滚动
 // @note            20260723 菜单项增加右键回调、自定义样式类和可恢复叠菜单
 // @note            20260722 增加常驻 popup 注册与静态级联子菜单 API
 // @note            20260717 增加自绘弹出菜单 menu API
@@ -542,7 +543,8 @@
                     max-width: min(360px, calc(100vw - ${MENU_VIEWPORT_MARGIN * 2}px));
                     max-height: min(480px, calc(100vh - ${MENU_VIEWPORT_MARGIN * 2}px));
                     padding: 4px;
-                    overflow: auto;
+                    overflow-x: hidden;
+                    overflow-y: auto;
                     border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
                     border-radius: 6px;
                     background: var(--colorBg, #fff);
@@ -560,9 +562,10 @@
                     grid-template-columns: 16px minmax(0, 1fr) auto 14px;
                     column-gap: 8px;
                     align-items: center;
+                    box-sizing: border-box;
                     width: 100%;
-                    min-height: 30px;
-                    padding: 5px 8px;
+                    min-height: 28px;
+                    padding: 3px 8px;
                     border: 0;
                     border-radius: 4px;
                     background: transparent;

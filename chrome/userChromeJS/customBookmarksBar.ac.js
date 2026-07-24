@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.5
+// @version         20260724.7
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -414,17 +414,20 @@
                 min-width: min(276px, calc(100vw - 16px));
                 max-width: min(320px, calc(100vw - 16px));
                 max-height: calc(100vh - 16px);
-                padding: 8px 6px;
+                padding: 12px 6px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                border-radius: 14px;
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-item {
-                grid-template-columns: 20px minmax(0, 1fr) auto;
-                column-gap: 10px;
-                min-height: 36px;
-                padding: 6px 12px;
-                border-radius: 6px;
-                font-size: 15px;
-                line-height: 1.35;
+                grid-template-columns: 18px minmax(0, 1fr) auto;
+                column-gap: 8px;
+                min-height: 30px;
+                padding: 3px 10px;
+                border-radius: 8px;
+                font-size: 14px;
+                line-height: 1.3;
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-shortcut {
@@ -439,12 +442,12 @@
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator {
-                margin: 4px -6px;
+                margin: 4px 0;
                 background: color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent);
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator[data-contextmenu="true"] {
-                margin: 0 -6px;
+                margin: 0;
                 background: linear-gradient(
                     to bottom,
                     transparent 4px,
