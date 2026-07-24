@@ -170,6 +170,9 @@
         const style = createElement('style', {
             id: STYLE_ID,
             innerHTML: `
+            .bookmark-bar[role="toolbar"] > div.observer {
+                display: none !important;
+            }
             .${MOUNT_CLASS} {
                 display: flex !important;
                 flex-direction: column !important;
@@ -193,7 +196,6 @@
                 width: 100%;
                 height: var(--userchrome-bookmark-row-height);
                 box-sizing: border-box;
-                border-top: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.1));
                 background-color: inherit;
                 color: inherit;
                 fill: inherit;
