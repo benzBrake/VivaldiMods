@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.4
+// @version         20260724.5
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -59,12 +59,26 @@
     const BOOKMARK_POPUP_CLASS = 'userchrome-bookmark-popup-menu';
     const CONTEXT_MENU_CLASS = 'userchrome-bookmark-context-menu';
     const DIALOG_ID = 'userchrome-bookmark-dialog';
+    const BOOKMARK_BAR_CLASSES = Object.freeze({
+        item: 'userchrome-custom-bookmarks-bar-item',
+        folder: 'userchrome-custom-bookmarks-bar-folder',
+        icon: 'userchrome-custom-bookmarks-bar-icon',
+        folderIcon: 'userchrome-custom-bookmarks-bar-folder-icon',
+        folderFill: 'userchrome-custom-bookmarks-bar-folder-fill',
+        title: 'userchrome-custom-bookmarks-bar-title',
+        separatorItem: 'userchrome-custom-bookmarks-bar-separator-item',
+        separator: 'userchrome-custom-bookmarks-bar-separator',
+        empty: 'userchrome-custom-bookmarks-bar-empty',
+        folderChevron: 'userchrome-custom-bookmarks-bar-folder-chevron',
+        more: 'userchrome-custom-bookmarks-bar-more'
+    });
     const CLIPBOARD_KEY = 'USERCHROME_BOOKMARK_CLIPBOARD';
     const CLIPBOARD_VERSION = 1;
     const REFRESH_DELAY = 120;
     const MOUNT_DELAY = 120;
     const FAVICON_SIZES = [16, 24, 32];
-    const FOLDER_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" class="folder-icon"><g class="fill-override"><svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2.35717 3.36075C2.13323 3.58693 2.00515 3.89221 2 4.21203V11.7872C1.99441 11.9479 2.02163 12.1081 2.07996 12.2577C2.13828 12.4073 2.22648 12.5431 2.33904 12.6568C2.4516 12.7705 2.58613 12.8596 2.73425 12.9185C2.88237 12.9774 3.04091 13.0049 3.2 12.9993H12.8C13.1167 12.9941 13.4189 12.8647 13.6428 12.6385C13.8668 12.4123 13.9948 12.1071 14 11.7872L14 6C14 5.5 13.5 5 13 5H8L6.8 3H3.2C2.88334 3.0052 2.5811 3.13457 2.35717 3.36075ZM2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04966 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z"></path><path fill-rule="evenodd" d="M2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04967 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z" fill-opacity="0.1"></path></svg></g></svg>';
+    const FOLDER_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" class="${BOOKMARK_BAR_CLASSES.icon} ${BOOKMARK_BAR_CLASSES.folderIcon}"><g class="${BOOKMARK_BAR_CLASSES.folderFill}"><svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2.35717 3.36075C2.13323 3.58693 2.00515 3.89221 2 4.21203V11.7872C1.99441 11.9479 2.02163 12.1081 2.07996 12.2577C2.13828 12.4073 2.22648 12.5431 2.33904 12.6568C2.4516 12.7705 2.58613 12.8596 2.73425 12.9185C2.88237 12.9774 3.04091 13.0049 3.2 12.9993H12.8C13.1167 12.9941 13.4189 12.8647 13.6428 12.6385C13.8668 12.4123 13.9948 12.1071 14 11.7872L14 6C14 5.5 13.5 5 13 5H8L6.8 3H3.2C2.88334 3.0052 2.5811 3.13457 2.35717 3.36075ZM2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04966 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z"></path><path fill-rule="evenodd" d="M2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04967 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z" fill-opacity="0.1"></path></svg></g></svg>`;
+    const FOLDER_CHEVRON_SVG = '<svg width="11" height="6" xmlns="http://www.w3.org/2000/svg"><path d="M1.354 4.894a.497.497 0 1 0 .702.702l3.423-3.423L8.9 5.596a.491.491 0 1 0 .695-.695L5.851 1.156a.49.49 0 0 0-.27-.137.496.496 0 0 0-.48.128L1.354 4.894z"></path></svg>';
     const MORE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.92429 3.07574C3.68997 2.84142 3.31007 2.84142 3.07576 3.07574C2.84145 3.31005 2.84145 3.68995 3.07576 3.92426L7.1515 8L3.07576 12.0757C2.84145 12.3101 2.84145 12.6899 3.07576 12.9243C3.31007 13.1586 3.68997 13.1586 3.92429 12.9243L8.84855 8L3.92429 3.07574Z" fill="currentColor"></path><path d="M8.92429 3.07574C8.68997 2.84142 8.31007 2.84142 8.07576 3.07574C7.84145 3.31005 7.84145 3.68995 8.07576 3.92426L12.1515 8L8.07576 12.0757C7.84145 12.3101 7.84145 12.6899 8.07576 12.9243C8.31007 13.1586 8.68997 13.1586 8.92429 12.9243L13.8486 8L8.92429 3.07574Z" fill="currentColor"></path></svg>';
 
     if (window[INSTANCE_KEY]) {
@@ -180,44 +194,203 @@
                 height: var(--userchrome-bookmark-row-height);
                 box-sizing: border-box;
                 border-top: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.1));
-                background: var(--colorBg, #fff);
-                color: var(--colorFg, #222);
+                background-color: inherit;
+                color: inherit;
+                fill: inherit;
+                stroke: inherit;
                 font: inherit;
                 position: relative;
             }
 
-            #${MORE_BUTTON_ID} {
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item},
+            #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more} {
                 display: inline-flex;
-                flex: 0 0 28px;
                 align-items: center;
-                justify-content: center;
-                width: 28px;
-                min-width: 28px;
-                height: 100%;
+                flex: 0 0 auto;
+                gap: 6px;
+                max-width: 120px;
                 box-sizing: border-box;
-                padding: 0;
-                position: absolute;
-                right: 0;
-                top: 0;
+                padding: 0 6px 0 0;
+                margin-left: 0;
+                border: 0;
+                border-radius: 0;
+                background: none;
+                color: inherit;
+                font: inherit;
+                position: relative;
             }
 
-            #${MORE_BUTTON_ID}[hidden] {
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}[hidden],
+            #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}[hidden] {
                 display: none !important;
             }
 
-            #${MORE_BUTTON_ID} > svg {
-                display: block;
+            .unified-ui #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item},
+            .unified-ui #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more} {
+                border-radius: var(--radius);
+                background-color: transparent;
+            }
+
+            .unified-ui #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:hover,
+            .unified-ui #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:hover {
+                background-color: var(--colorBgAlphaHeavier);
+            }
+
+            .unified-ui #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:active,
+            .unified-ui #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:active {
+                background-color: var(--colorBgAlphaHeavy);
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.separatorItem} {
+                padding-left: 5px;
+            }
+
+            #${ROW_ID} .${BOOKMARK_BAR_CLASSES.separator} {
+                height: 28px;
+                border-left: 1px solid var(--colorBorder);
+            }
+
+            .color-behind-tabs-off #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item},
+            .color-behind-tabs-off #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more} {
+                background-color: var(--colorAccentBg);
+                color: var(--colorAccentFg);
+            }
+
+            .color-behind-tabs-off #${ROW_ID} .${BOOKMARK_BAR_CLASSES.separator} {
+                border-left-color: var(--colorAccentBorder);
+            }
+
+            .color-behind-tabs-on #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item},
+            .color-behind-tabs-on #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more} {
+                background-color: var(--colorBg);
+            }
+
+            .color-behind-tabs-off #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:focus-visible,
+            .color-behind-tabs-off #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:hover,
+            .color-behind-tabs-off #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:focus-visible,
+            .color-behind-tabs-off #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:hover {
+                background-color: var(--colorAccentBgDark);
+            }
+
+            .color-behind-tabs-on #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:focus-visible,
+            .color-behind-tabs-on #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:hover,
+            .color-behind-tabs-on #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:focus-visible,
+            .color-behind-tabs-on #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:hover {
+                background-color: var(--colorBgDark);
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} img,
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} svg,
+            #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more} > svg {
+                width: 16px;
+                height: 16px;
+                flex: 0 0 auto;
+                margin: auto 0;
+                fill: currentColor;
+                stroke: none;
                 pointer-events: none;
             }
 
-            #${ROW_ID} .bookmark-item.folder:focus,
-            #${ROW_ID} .bookmark-item.folder:focus-visible,
-            #${ROW_ID} .bookmark-item.folder:focus-within {
-                outline: none !important;
-                box-shadow: none !important;
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:focus-visible img.${BOOKMARK_BAR_CLASSES.icon},
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:hover img.${BOOKMARK_BAR_CLASSES.icon} {
+                border-radius: 3px;
+                background-color: transparent;
             }
 
-            #${ROW_ID} .userchrome-bookmark-empty {
+            #${ROW_ID} .${BOOKMARK_BAR_CLASSES.icon} {
+                border-radius: 3px;
+            }
+
+            #${ROW_ID} .${BOOKMARK_BAR_CLASSES.folderIcon} {
+                flex: 0 0 auto;
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} span {
+                display: flex;
+                order: 1;
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} .${BOOKMARK_BAR_CLASSES.folderChevron} {
+                display: inline-flex;
+                flex: 0 0 10px;
+                align-items: center;
+                justify-content: center;
+                width: 10px;
+                height: 10px;
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} .${BOOKMARK_BAR_CLASSES.folderChevron} > svg {
+                width: initial;
+                height: initial;
+                margin: 0;
+                opacity: 0.65;
+                rotate: 180deg;
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item} .${BOOKMARK_BAR_CLASSES.title} {
+                display: inline-block;
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                pointer-events: none;
+            }
+
+            #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}::before {
+                content: '';
+                width: 0;
+                height: 28px;
+                flex: 0 0 auto;
+                background-color: transparent;
+                position: relative;
+                transition: width 50ms linear 50ms;
+            }
+
+            .active-pane-selection.hasfocus #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:focus-visible,
+            .active-pane-selection.hasfocus #${ROW_ID} > .${BOOKMARK_BAR_CLASSES.more}:focus-visible {
+                outline: 2px solid var(--colorHighlightBg);
+                outline-offset: -2px;
+            }
+
+            #${MORE_BUTTON_ID}.${BOOKMARK_BAR_CLASSES.more} {
+                flex: 0 0 28px;
+                width: 28px;
+                min-width: 28px;
+                height: 100%;
+                max-width: 28px;
+                padding: 0 6px;
+                gap: 0;
+                position: absolute;
+                right: 0;
+                top: 0;
+                align-self: center;
+                stroke-opacity: 0;
+            }
+
+            #${MORE_BUTTON_ID}.${BOOKMARK_BAR_CLASSES.more} > svg {
+                display: block;
+            }
+
+            #${MORE_BUTTON_ID}.${BOOKMARK_BAR_CLASSES.more}::before {
+                content: none;
+                display: none;
+            }
+
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.item} span,
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.item} img,
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.item} svg,
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.more} svg {
+                visibility: hidden;
+                pointer-events: none;
+            }
+
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.item},
+            #browser.break-mode #${ROW_ID} .${BOOKMARK_BAR_CLASSES.more} {
+                background: transparent;
+                box-shadow: 1px 0 var(--colorBorder);
+                pointer-events: none;
+            }
+
+            #${ROW_ID} .${BOOKMARK_BAR_CLASSES.empty} {
                 display: inline-flex;
                 align-items: center;
                 min-width: 0;
@@ -1709,43 +1882,58 @@
 
     function createBookmarkButton (node, index) {
         const label = getNodeLabel(node, '未命名文件夹');
+        const isFolder = !node.url;
+        const displayMode = state.data.displayMode;
+        const showIcon = displayMode !== 'text';
+        const showTitle = displayMode !== 'icon'
+            && (displayMode !== 'iconexceptfolders' || isFolder);
         const button = createElement('button', {
             type: 'button',
-            class: 'bookmark-item' + (node.url ? '' : ' folder'),
+            class: BOOKMARK_BAR_CLASSES.item + (isFolder ? ' ' + BOOKMARK_BAR_CLASSES.folder : ''),
             'data-bookmark-id': node.id,
-            'data-kind': node.url ? 'link' : 'folder',
+            'data-kind': isFolder ? 'folder' : 'link',
             tabindex: index === 0 ? 0 : -1,
             'aria-label': label,
             title: node.url ? getNodeLabel(node, '未命名书签') + '\n' + node.url : label
         });
 
-        let icon;
-        if (node.url) {
-            icon = createElement('img', {
-                class: 'favicon',
-                src: getFaviconUrl(node.url, FAVICON_SIZES[0]),
-                srcset: getFaviconSrcset(node.url),
-                sizes: '16px',
-                width: '16',
-                height: '16',
-                alt: '',
-                draggable: 'false',
-                'aria-hidden': 'true'
-            });
-        } else {
-            // Parse the selected static SVG without adding a wrapper to Vivaldi's toolbar DOM.
-            const iconTemplate = createElement('template', { innerHTML: FOLDER_ICON_SVG });
-            icon = iconTemplate.content.firstElementChild;
+        if (showIcon) {
+            let icon;
+            if (node.url) {
+                icon = createElement('img', {
+                    class: BOOKMARK_BAR_CLASSES.icon,
+                    src: getFaviconUrl(node.url, FAVICON_SIZES[0]),
+                    srcset: getFaviconSrcset(node.url),
+                    sizes: '16px',
+                    width: '16',
+                    height: '16',
+                    alt: '',
+                    draggable: 'false',
+                    'aria-hidden': 'true'
+                });
+            } else {
+                // Parse the selected static SVG without adding a wrapper to Vivaldi's toolbar DOM.
+                const iconTemplate = createElement('template', { innerHTML: FOLDER_ICON_SVG });
+                icon = iconTemplate.content.firstElementChild;
+            }
+            button.appendChild(icon);
         }
-        const title = createElement('span', {
-            class: 'title',
-            innerText: label
-        });
 
-        button.appendChild(icon);
-        button.appendChild(title);
+        if (showTitle) {
+            if (isFolder && displayMode === 'text') {
+                button.appendChild(createElement('span', {
+                    class: BOOKMARK_BAR_CLASSES.folderChevron,
+                    'aria-hidden': 'true',
+                    innerHTML: FOLDER_CHEVRON_SVG
+                }));
+            }
+            button.appendChild(createElement('span', {
+                class: BOOKMARK_BAR_CLASSES.title,
+                innerText: label
+            }));
+        }
 
-        if (!node.url) {
+        if (isFolder) {
             button.setAttribute('aria-haspopup', 'menu');
             button.setAttribute('aria-expanded', 'false');
         }
@@ -1793,10 +1981,10 @@
             'data-offset': '0',
             title: node.title,
             tabindex: -1,
-            class: 'bookmarkbarItem',
+            class: BOOKMARK_BAR_CLASSES.item + ' ' + BOOKMARK_BAR_CLASSES.separatorItem,
             draggable: 'true'
         });
-        button.appendChild(createElement('span', { class: 'separator' }));
+        button.appendChild(createElement('span', { class: BOOKMARK_BAR_CLASSES.separator }));
         button.setAttribute('aria-label', '书签分隔线');
         attachBookmarkContextMenu(button, node);
         return button;
@@ -2131,7 +2319,7 @@
 
         if (!state.data.topLevel.length) {
             const empty = createElement('span', {
-                class: 'userchrome-bookmark-empty',
+                class: BOOKMARK_BAR_CLASSES.empty,
                 innerText: '暂无书签'
             });
             state.items.appendChild(empty);
@@ -2226,7 +2414,7 @@
         const moreButton = createElement('button', {
             id: MORE_BUTTON_ID,
             type: 'button',
-            class: 'bookmarkbarItem more',
+            class: BOOKMARK_BAR_CLASSES.more,
             'aria-label': '更多书签',
             'aria-haspopup': 'menu',
             'aria-expanded': 'false',

@@ -9,7 +9,7 @@
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏，使用 Popupset 展开文件夹，为网址书签加载多分辨率 favicon，并为书签、文件夹和分隔线提供完整右键操作；自绘 `.more` 按钮独立于原生 `.chevron`，仅在 `hiddenNodes` 有项目时显示 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的四种显示模式渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供文件夹 Popupset、溢出菜单和完整右键操作 |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -180,10 +180,13 @@ element.addEventListener('contextmenu', function (event) {
 
 不支持 HTML 菜单项、异步 `childrenProvider` 或快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
 
-### `customBookmarksBar.ac.js` 右键菜单
+### `customBookmarksBar.ac.js` 自绘书签栏
 
-自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids` 与 `vivaldi.bookmarks.bar.display`。顶层项目、文件夹 Popupset 和“更多书签”都支持右键菜单：
+自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids` 与 `vivaldi.bookmarks.bar.display`。样式以 Vivaldi 8.1.4087.48 的 `style/common.css` 为基准，并使用脚本自身的作用域选择器复刻原生书签栏外观：
 
+- 保留挂载容器的 `div.observer` class；自绘书签项子树和外置“更多书签”按钮统一使用 `userchrome-custom-bookmarks-bar-*` class，避免进入原生 `bookmarkbarItem` 查询和样式分支
+- 支持 `default`、`text`、`icon`、`iconexceptfolders` 四种原生显示模式；纯文本模式下文件夹显示 10px chevron，图标模式仍保留可访问名称与提示
+- 复刻原生按钮布局、主题背景、hover/active/focus、图标、标题截断、分隔线和 Break Mode 状态；`#userchrome-custom-bookmarks-bar` 与 `#userchrome-custom-bookmarks-more` 保持稳定
 - 网址书签和文件夹支持当前标签、新标签、后台标签、新窗口及隐身窗口打开
 - 文件夹支持添加当前标签页、新建书签、新建文件夹、新增分隔线和粘贴
 - 书签项目支持编辑、重命名、剪切、复制和删除；编辑器使用原生 `<dialog>`
