@@ -191,6 +191,7 @@ element.addEventListener('contextmenu', function (event) {
 - 写操作依赖 `chrome.bookmarks` 事件刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
 - 网址书签的图标通过 `chrome://favicon2/` 获取，书签栏使用 16/24/32px `srcset` 适配不同显示缩放
 - Popupset 内右键会暂存原书签菜单，关闭右键菜单后返回原位置；各级文件夹子菜单使用一致的圆角、边框和阴影
+- 键盘、鼠标、指针、触摸和拖拽事件在 `#userchrome-custom-bookmarks-bar` 边界停止冒泡，避免自绘行的操作进入原生 `.bookmark-bar` 的委托监听器
 
 ### `window.userChrome_js.createElement(tag, attrs)`
 

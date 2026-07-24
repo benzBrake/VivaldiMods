@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260723.3
+// @version         20260724.1
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -19,6 +19,36 @@
     const MOUNT_CLASS = 'userchrome-custom-bookmarks-mounted';
     const ROW_ID = 'userchrome-custom-bookmarks-bar';
     const ROW_LABEL = '自绘书签栏';
+    const ROW_EVENT_BOUNDARY_TYPES = [
+        'auxclick',
+        'click',
+        'contextmenu',
+        'dblclick',
+        'keydown',
+        'keyup',
+        'mousedown',
+        'mousemove',
+        'mouseout',
+        'mouseover',
+        'mouseup',
+        'pointerdown',
+        'pointermove',
+        'pointerout',
+        'pointerover',
+        'pointerup',
+        'pointercancel',
+        'dragstart',
+        'dragend',
+        'dragenter',
+        'dragleave',
+        'dragover',
+        'drop',
+        'touchstart',
+        'touchmove',
+        'touchend',
+        'touchcancel',
+        'wheel'
+    ];
     const BOOKMARKS_FOLDER_PREF = 'vivaldi.bookmarks.bar.folder_ids';
     const BOOKMARKS_DISPLAY_PREF = 'vivaldi.bookmarks.bar.display';
     const DEFAULT_FOLDER_ID = '1';
@@ -1681,19 +1711,31 @@
                 return;
             }
 
+            let nextIndex;
             if (event.key === 'ArrowRight') {
-                event.preventDefault();
-                setButtonFocus(currentIndex + 1);
+                nextIndex = currentIndex + 1;
             } else if (event.key === 'ArrowLeft') {
-                event.preventDefault();
-                setButtonFocus(currentIndex - 1);
+                nextIndex = currentIndex - 1;
             } else if (event.key === 'Home') {
-                event.preventDefault();
-                setButtonFocus(0);
+                nextIndex = 0;
             } else if (event.key === 'End') {
-                event.preventDefault();
-                setButtonFocus(visibleButtons.length - 1);
+                nextIndex = visibleButtons.length - 1;
+            } else {
+                return;
             }
+
+            event.preventDefault();
+            event.stopPropagation();
+            setButtonFocus(nextIndex);
+        });
+    }
+
+    function attachRowEventBoundary (row) {
+        const stopPropagation = function (event) {
+            event.stopPropagation();
+        };
+        ROW_EVENT_BOUNDARY_TYPES.forEach(function (eventType) {
+            row.addEventListener(eventType, stopPropagation);
         });
     }
 
@@ -2218,6 +2260,7 @@
             role: 'toolbar',
             'aria-label': ROW_LABEL
         });
+        attachRowEventBoundary(row);
         const items = createElement('div', { class: 'observer' });
         const moreButton = createElement('button', {
             type: 'button',
