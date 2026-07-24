@@ -198,7 +198,7 @@ element.addEventListener('contextmenu', function (event) {
 - 剪贴板通过版本化 `localStorage` 保存，复制文件夹时递归重建，剪切时调用 `chrome.bookmarks.move`
 - 写操作依赖 `chrome.bookmarks` 事件刷新，昵称/描述排序可通过 `vivaldi.bookmarksPrivate.onMetaInfoChanged` 即时刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
 - 网址书签的图标通过 `chrome://favicon2/` 获取，书签栏使用 16/24/32px `srcset` 适配不同显示缩放
-- Popupset 内右键会暂存原书签菜单，关闭右键菜单后返回原位置；右键菜单使用紧凑菜单项、12px 上下留白和独立圆角，分隔线不会撑开横向滚动区域，各级文件夹子菜单保持一致的边框和阴影
+- Popupset 内右键会暂存原书签菜单，关闭右键菜单后返回原位置；右键菜单使用与公共菜单一致的 13px 字号、紧凑菜单项、12px 上下留白和独立圆角，分隔线不会撑开横向滚动区域，各级文件夹子菜单保持一致的边框和阴影
 - 键盘、鼠标、指针、触摸和拖拽事件在 `#userchrome-custom-bookmarks-bar` 边界停止冒泡，避免自绘行的操作进入原生 `.bookmark-bar` 的委托监听器
 
 ### `window.userChrome_js.createElement(tag, attrs)`

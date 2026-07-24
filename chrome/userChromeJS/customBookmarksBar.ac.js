@@ -448,14 +448,14 @@
                 min-height: 30px;
                 padding: 3px 10px;
                 border-radius: 8px;
-                font-size: 14px;
+                font-size: 13px;
                 line-height: 1.3;
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-shortcut {
                 margin-left: 14px;
                 color: inherit;
-                font-size: 13px;
+                font-size: 12px;
                 opacity: 0.82;
             }
 
