@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.3
+// @version         0.2.4
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260724 菜单标签增加 Windows 风格助记键语法和按键分发
 // @note            20260724 收紧菜单项间距并禁止菜单横向滚动
 // @note            20260723 菜单项增加右键回调、自定义样式类和可恢复叠菜单
 // @note            20260722 增加常驻 popup 注册与静态级联子菜单 API
@@ -621,6 +622,12 @@
                     white-space: nowrap;
                 }
 
+                #${MENU_ROOT_ID} .userchrome-menu-accesskey {
+                    text-decoration: underline;
+                    text-decoration-thickness: 1px;
+                    text-underline-offset: 2px;
+                }
+
                 #${MENU_ROOT_ID} .userchrome-menu-shortcut {
                     margin-left: 18px;
                     color: var(--colorFgFaded, rgba(34, 34, 34, 0.65));
@@ -681,6 +688,66 @@
             }).join(' ');
         }
 
+        function parseMenuLabel(value) {
+            const localizedAccessKey = /\(&([a-zA-Z0-9])\)$/.exec(value);
+            if (localizedAccessKey) {
+                const label = value.slice(0, localizedAccessKey.index).replace(/&&/g, '&');
+                const accessKey = localizedAccessKey[1];
+                const displayLabel = label + '(' + accessKey + ')';
+                return {
+                    label: label,
+                    displayLabel: displayLabel,
+                    accessKey: accessKey.toLocaleUpperCase(),
+                    accessKeyIndex: label.length + 1
+                };
+            }
+
+            let displayLabel = '';
+            let accessKey = '';
+            let accessKeyIndex = -1;
+            for (let index = 0; index < value.length; index += 1) {
+                const character = value[index];
+                if (character !== '&') {
+                    displayLabel += character;
+                    continue;
+                }
+
+                const nextCharacter = value[index + 1];
+                if (nextCharacter === '&') {
+                    displayLabel += '&';
+                    index += 1;
+                } else if (!accessKey && /^[a-zA-Z0-9]$/.test(nextCharacter || '')) {
+                    accessKey = nextCharacter.toLocaleUpperCase();
+                    accessKeyIndex = displayLabel.length;
+                    displayLabel += nextCharacter;
+                    index += 1;
+                } else {
+                    displayLabel += character;
+                }
+            }
+
+            return {
+                label: displayLabel,
+                displayLabel: displayLabel,
+                accessKey: accessKey,
+                accessKeyIndex: accessKeyIndex
+            };
+        }
+
+        function renderMenuLabel(element, item) {
+            if (!item.accessKey || item.accessKeyIndex < 0) {
+                element.textContent = item.displayLabel;
+                return;
+            }
+
+            element.appendChild(document.createTextNode(item.displayLabel.slice(0, item.accessKeyIndex)));
+            const accessKey = document.createElement('span');
+            accessKey.className = 'userchrome-menu-accesskey';
+            accessKey.textContent = item.displayLabel[item.accessKeyIndex];
+            element.appendChild(accessKey);
+            element.appendChild(document.createTextNode(item.displayLabel.slice(item.accessKeyIndex + 1)));
+        }
+
         function normalizeItems(items, parentPath, allowEmpty) {
             if (!Array.isArray(items)) {
                 throw new TypeError('Menu items must be an array.');
@@ -703,6 +770,7 @@
                     throw new TypeError('Menu item at index ' + index + ' requires a string label.');
                 }
 
+                const parsedLabel = parseMenuLabel(item.label);
                 const path = parentPath.concat(index);
                 const children = item.children === undefined
                     ? []
@@ -711,7 +779,10 @@
                 return {
                     id: typeof item.id === 'string' ? item.id : '',
                     type: item.type === 'checkbox' ? 'checkbox' : 'item',
-                    label: item.label,
+                    label: parsedLabel.label,
+                    displayLabel: parsedLabel.displayLabel,
+                    accessKey: parsedLabel.accessKey,
+                    accessKeyIndex: parsedLabel.accessKeyIndex,
                     checked: item.type === 'checkbox' && item.checked === true,
                     disabled: item.disabled === true,
                     icon: typeof item.icon === 'string' ? item.icon : '',
@@ -857,6 +928,8 @@
                 button.type = 'button';
                 button.className = 'userchrome-menu-item';
                 button.setAttribute('role', item.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem');
+                button.setAttribute('label', item.label);
+                button.setAttribute('aria-label', item.label);
                 button.tabIndex = -1;
                 button.disabled = item.disabled;
                 if (item.type === 'checkbox') {
@@ -883,7 +956,7 @@
                 }
                 const label = document.createElement('span');
                 label.className = 'userchrome-menu-label';
-                label.textContent = item.label;
+                renderMenuLabel(label, item);
                 const shortcut = document.createElement('span');
                 shortcut.className = 'userchrome-menu-shortcut';
                 shortcut.textContent = item.shortcut;
@@ -1262,6 +1335,33 @@
             }
             if (!focusableItems.length) {
                 return;
+            }
+
+            if (!event.ctrlKey
+                && !event.altKey
+                && !event.metaKey
+                && !event.isComposing
+                && event.key.length === 1) {
+                const accessKey = event.key.toLocaleUpperCase();
+                const matches = focusableItems.filter(function (entry) {
+                    return entry.item.accessKey === accessKey;
+                });
+                if (matches.length === 1) {
+                    event.preventDefault();
+                    matches[0].element.click();
+                    return;
+                }
+                if (matches.length > 1) {
+                    event.preventDefault();
+                    const activeMatchIndex = matches.findIndex(function (entry) {
+                        return entry.element === document.activeElement;
+                    });
+                    const nextMatch = matches[(activeMatchIndex + 1) % matches.length];
+                    closeSubmenusAfter(current, activeMenu);
+                    current.suppressFocusOpen = nextMatch;
+                    focusItem(activeMenu, focusableItems.indexOf(nextMatch));
+                    return;
+                }
             }
 
             if (event.key === 'ArrowDown') {

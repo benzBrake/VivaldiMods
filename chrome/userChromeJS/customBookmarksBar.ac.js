@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.10
+// @version         20260724.11
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -1688,8 +1688,7 @@
         const items = [
             {
                 id: 'add-current-page',
-                label: '添加当前标签页',
-                shortcut: 'A',
+                label: '添加当前标签页(&A)',
                 onSelect: function () {
                     return addCurrentPageToFolder(folder);
                 }
@@ -1697,16 +1696,14 @@
             { type: 'separator' },
             {
                 id: 'new-bookmark',
-                label: '新建书签',
-                shortcut: 'N',
+                label: '新建书签(&N)',
                 onSelect: function () {
                     return createNewBookmark(folder);
                 }
             },
             {
                 id: 'new-folder',
-                label: '新建文件夹',
-                shortcut: 'F',
+                label: '新建文件夹(&F)',
                 onSelect: function () {
                     return createNewFolder(folder);
                 }
@@ -1716,8 +1713,7 @@
         if (isManualSorting(state.data.sorting)) {
             items.push({
                 id: 'new-separator',
-                label: '新增分隔线',
-                shortcut: 'S',
+                label: '新增分隔线(&S)',
                 onSelect: function () {
                     return createSeparator(folder);
                 }
@@ -1729,15 +1725,13 @@
             { type: 'separator' },
             {
                 id: 'sort',
-                label: '排序',
-                shortcut: 'O',
+                label: '排序(&O)',
                 children: createBookmarkSortMenuItems()
             },
             { type: 'separator' },
             {
                 id: 'paste',
-                label: '粘贴',
-                shortcut: 'P',
+                label: '粘贴(&P)',
                 disabled: !canPasteIntoFolder(folder, clipboard),
                 onSelect: function () {
                     return pasteIntoFolder(folder);
@@ -1751,24 +1745,21 @@
         return [
             {
                 id: 'open-new-tab',
-                label: '在新标签中打开',
-                shortcut: 'O',
+                label: '在新标签中打开(&O)',
                 onSelect: function () {
                     return openNodeInMode(node, 'new-tab');
                 }
             },
             {
                 id: 'open-background-tab',
-                label: '在后台标签中打开',
-                shortcut: 'I',
+                label: '在后台标签中打开(&I)',
                 onSelect: function () {
                     return openNodeInMode(node, 'new-background-tab');
                 }
             },
             {
                 id: 'open-current-tab',
-                label: '打开',
-                shortcut: 'E',
+                label: '打开(&E)',
                 onSelect: function () {
                     return openNodeInMode(node, 'current-tab');
                 }
@@ -1776,16 +1767,14 @@
             { type: 'separator' },
             {
                 id: 'open-new-window',
-                label: '在新窗口中打开',
-                shortcut: 'N',
+                label: '在新窗口中打开(&N)',
                 onSelect: function () {
                     return openNodeInMode(node, 'new-window');
                 }
             },
             {
                 id: 'open-incognito-window',
-                label: '在新建隐身窗口中打开',
-                shortcut: 'P',
+                label: '在新建隐身窗口中打开(&P)',
                 onSelect: function () {
                     return openNodeInMode(node, 'incognito-window');
                 }
@@ -1805,8 +1794,7 @@
                 { type: 'separator' },
                 {
                     id: 'add-current-page',
-                    label: '添加当前标签页',
-                    shortcut: 'A',
+                    label: '添加当前标签页(&A)',
                     onSelect: function () {
                         return addCurrentPageToFolder(node);
                     }
@@ -1814,16 +1802,14 @@
                 { type: 'separator' },
                 {
                     id: 'new-bookmark',
-                    label: '新建书签',
-                    shortcut: 'B',
+                    label: '新建书签(&B)',
                     onSelect: function () {
                         return createNewBookmark(node);
                     }
                 },
                 {
                     id: 'new-folder',
-                    label: '新建文件夹',
-                    shortcut: 'F',
+                    label: '新建文件夹(&F)',
                     onSelect: function () {
                         return createNewFolder(node);
                     }
@@ -1832,8 +1818,7 @@
             if (isManualSorting(state.data.sorting)) {
                 items.push({
                     id: 'new-separator',
-                    label: '新增分隔线',
-                    shortcut: 'S',
+                    label: '新增分隔线(&S)',
                     onSelect: function () {
                         return createSeparator(node);
                     }
@@ -1843,16 +1828,14 @@
                 { type: 'separator' },
                 {
                     id: 'edit',
-                    label: '编辑',
-                    shortcut: 'D',
+                    label: '编辑(&D)',
                     onSelect: function () {
                         return editNode(node, false);
                     }
                 },
                 {
                     id: 'rename',
-                    label: '重命名',
-                    shortcut: 'R',
+                    label: '重命名(&R)',
                     onSelect: function () {
                         return editNode(node, true);
                     }
@@ -1863,16 +1846,14 @@
                 { type: 'separator' },
                 {
                     id: 'edit',
-                    label: '编辑',
-                    shortcut: 'D',
+                    label: '编辑(&D)',
                     onSelect: function () {
                         return editNode(node, false);
                     }
                 },
                 {
                     id: 'rename',
-                    label: '重命名',
-                    shortcut: 'R',
+                    label: '重命名(&R)',
                     onSelect: function () {
                         return editNode(node, true);
                     }
@@ -1886,16 +1867,14 @@
         items.push(
             {
                 id: 'cut',
-                label: '剪切',
-                shortcut: 'C',
+                label: '剪切(&C)',
                 onSelect: function () {
                     writeBookmarkClipboard('cut', node);
                 }
             },
             {
                 id: 'copy',
-                label: '复制',
-                shortcut: 'C',
+                label: '复制(&C)',
                 onSelect: function () {
                     writeBookmarkClipboard('copy', node);
                 }
@@ -1905,8 +1884,7 @@
             const clipboard = readBookmarkClipboard();
             items.push({
                 id: 'paste',
-                label: '粘贴',
-                shortcut: 'T',
+                label: '粘贴(&T)',
                 disabled: !canPasteIntoFolder(node, clipboard),
                 onSelect: function () {
                     return pasteIntoFolder(node);
@@ -1917,8 +1895,7 @@
             { type: 'separator' },
             {
                 id: 'delete',
-                label: '删除',
-                shortcut: 'L',
+                label: '删除(&L)',
                 onSelect: function () {
                     return confirmDeleteNode(node);
                 }

@@ -5,11 +5,11 @@
 | activateTabOnHover.ac.js      | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏）                                                                                 |
 | chromeDevtools_Button.ac.js   | 侧边栏 DevTools 按钮：优先连`localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
 | global-media-controls.ac.js   | 侧边栏增加一个全局播放控制面板                                                                                                      |
-| test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、级联子菜单、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制                              |
+| test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、助记键、级联子菜单、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制                       |
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供文件夹 Popupset、溢出菜单及项目/空白区域右键操作 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供文件夹 Popupset、溢出菜单及带助记键的项目/空白区域右键操作 |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -121,6 +121,8 @@ const popup = userChrome_js.menu.register({
 - `ariaLabel` 可选，默认为 `菜单`
 - `className` 可选，只接受由字母、数字、`-` 和 `_` 组成的 CSS 类名，可为空格分隔多个类
 - `items` 至少包含一个非分隔项；菜单项支持 `id`、`label`、`icon`、`disabled`、`shortcut`、`onSelect`、`onContextMenu`、`type: 'checkbox'`、`checked` 和静态 `children`；`icon` 为 16px 图标的 URL
+- `label` 支持 Windows 风格助记键：英文使用 `&Save As`，中文使用 `另存为(&S)`；`&&` 显示为字面量 `&`
+- 助记符不会进入纯文本属性：对应菜单按钮的 `getAttribute('label')` 分别返回 `Save As` 和 `另存为`，且可见助记字母以下划线标识
 - `children` 表示子菜单；子菜单项目支持任意层级，但不会异步加载
 - 返回控制器 `{ id, element, open(options), close(reason?), unregister() }`
 
@@ -176,9 +178,9 @@ element.addEventListener('contextmenu', function (event) {
 });
 ```
 
-菜单项被选择时会先关闭当前 popup 链并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示。普通项与分隔项均可提供 `onContextMenu({ id, event, element, position })`，鼠标右键、菜单键和 `Shift+F10` 会阻止浏览器原生菜单并传入菜单项元素及视口坐标，但不会自动关闭原 popup。回调可用 `preserveCurrent: true` 打开临时右键菜单，关闭后恢复原 popup 和来源项目焦点。菜单支持鼠标悬停或点击展开子菜单，以及 `ArrowLeft` / `ArrowRight`、`ArrowUp` / `ArrowDown`、`Home` / `End`、`Enter` / `Space`、`Escape` 和 `Tab` 键盘操作。点击叠菜单之外会关闭整组菜单；窗口滚动/缩放会重新定位，锚点被移除时会关闭相应 popup。
+菜单项被选择时会先关闭当前 popup 链并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示。菜单打开时，无 `Ctrl` / `Alt` / `Meta` 修饰的助记字母会在当前层级中生效：唯一匹配项直接执行或展开子菜单，重复匹配项循环聚焦后等待 `Enter`。普通项与分隔项均可提供 `onContextMenu({ id, event, element, position })`，鼠标右键、菜单键和 `Shift+F10` 会阻止浏览器原生菜单并传入菜单项元素及视口坐标，但不会自动关闭原 popup。回调可用 `preserveCurrent: true` 打开临时右键菜单，关闭后恢复原 popup 和来源项目焦点。菜单支持鼠标悬停或点击展开子菜单，以及 `ArrowLeft` / `ArrowRight`、`ArrowUp` / `ArrowDown`、`Home` / `End`、`Enter` / `Space`、`Escape` 和 `Tab` 键盘操作。点击叠菜单之外会关闭整组菜单；窗口滚动/缩放会重新定位，锚点被移除时会关闭相应 popup。
 
-不支持 HTML 菜单项、异步 `childrenProvider` 或快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
+不支持 HTML 菜单项、异步 `childrenProvider` 或全局/组合快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
 
 ### `customBookmarksBar.ac.js` 自绘书签栏
 
@@ -192,6 +194,7 @@ element.addEventListener('contextmenu', function (event) {
 - 书签栏空白区域提供原生顺序的新增、排序和粘贴菜单；鼠标打开时不预高亮首项，移出项目后不残留高亮，键盘操作仍保留焦点反馈；排序支持手动、标题、地址、昵称、描述、创建日期及升降序，作用于当前书签栏根文件夹
 - 排序沿用 `vivaldi.bookmarks.bar.sorting` 的展示语义，不改写书签顺序；非手动排序时隐藏分隔线及“新增分隔线”操作
 - 书签项目支持编辑、重命名、剪切、复制和删除；编辑器使用原生 `<dialog>`
+- 书签项目和空白区域右键菜单将单字母助记键融合进中文标签，菜单打开后可直接按字母执行；重复助记键会循环聚焦候选项
 - 剪贴板通过版本化 `localStorage` 保存，复制文件夹时递归重建，剪切时调用 `chrome.bookmarks.move`
 - 写操作依赖 `chrome.bookmarks` 事件刷新，昵称/描述排序可通过 `vivaldi.bookmarksPrivate.onMetaInfoChanged` 即时刷新；打开操作依赖 `chrome.tabs`、`chrome.windows`，当前窗口的新标签会继承活动标签的工作区信息
 - 网址书签的图标通过 `chrome://favicon2/` 获取，书签栏使用 16/24/32px `srcset` 适配不同显示缩放

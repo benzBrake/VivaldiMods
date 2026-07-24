@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            menuTest_Button.ac.js
-// @description     侧边栏 Popupset 菜单测试按钮，覆盖注册菜单、级联子菜单、锚定/坐标定位、菜单项右键与状态重注册
+// @description     侧边栏 Popupset 菜单测试按钮，覆盖注册菜单、助记键、级联子菜单、锚定/坐标定位、菜单项右键与状态重注册
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260723.1
+// @version         20260724.1
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -64,6 +64,44 @@
         }
     }
 
+    function verifyMnemonicLabels() {
+        const menu = getMenuApi();
+        const popup = menu && typeof menu.getPopup === 'function'
+            ? menu.getPopup(POPUP_ID)
+            : null;
+        const english = popup && popup.querySelector('.userchrome-menu-item[label="Save As"]');
+        const chinese = popup && popup.querySelector('.userchrome-menu-item[label="另存为"]');
+        const literalAmpersand = popup && popup.querySelector('.userchrome-menu-item[label="Literal & Ampersand"]');
+        const englishLabel = english && english.querySelector('.userchrome-menu-label');
+        const chineseLabel = chinese && chinese.querySelector('.userchrome-menu-label');
+        const literalAmpersandLabel = literalAmpersand
+            && literalAmpersand.querySelector('.userchrome-menu-label');
+        const englishAccessKey = english && english.querySelector('.userchrome-menu-accesskey');
+        const chineseAccessKey = chinese && chinese.querySelector('.userchrome-menu-accesskey');
+        const valid = Boolean(
+            english
+            && chinese
+            && literalAmpersand
+            && englishLabel
+            && chineseLabel
+            && literalAmpersandLabel
+            && englishAccessKey
+            && chineseAccessKey
+            && english.getAttribute('label') === 'Save As'
+            && chinese.getAttribute('label') === '另存为'
+            && englishLabel.textContent === 'Save As'
+            && chineseLabel.textContent === '另存为(S)'
+            && literalAmpersandLabel.textContent === 'Literal & Ampersand(L)'
+            && englishAccessKey.textContent === 'S'
+            && chineseAccessKey.textContent === 'S'
+            && !popup.querySelector('[labe]')
+        );
+        notify(
+            valid ? '助记键标签属性与显示文本均正确。' : '助记键标签验证失败，请检查 Popupset DOM。',
+            valid ? 'success' : 'error'
+        );
+    }
+
     function createItems() {
         return [
             {
@@ -88,6 +126,45 @@
                     registerMenu();
                     notify('紧凑模式示例已' + (state.compactMode ? '启用。' : '关闭。'));
                 }
+            },
+            {
+                id: 'save-as-english',
+                label: '&Save As',
+                onSelect: function () {
+                    notify('英文助记键菜单项已触发。', 'success');
+                }
+            },
+            {
+                id: 'save-as-chinese',
+                label: '另存为(&S)',
+                onSelect: function () {
+                    notify('中文助记键菜单项已触发。', 'success');
+                }
+            },
+            {
+                id: 'literal-ampersand',
+                label: 'Literal && Ampersand(&L)',
+                onSelect: function () {
+                    notify('双与号转义菜单项已触发。', 'success');
+                }
+            },
+            {
+                id: 'mnemonic-submenu',
+                label: '助记键子菜单(&M)',
+                children: [
+                    {
+                        id: 'mnemonic-submenu-action',
+                        label: '执行子菜单命令(&R)',
+                        onSelect: function () {
+                            notify('助记键子菜单项已触发。', 'success');
+                        }
+                    }
+                ]
+            },
+            {
+                id: 'verify-mnemonic-labels',
+                label: '检查助记键标签(&V)',
+                onSelect: verifyMnemonicLabels
             },
             {
                 id: 'context-separator',
