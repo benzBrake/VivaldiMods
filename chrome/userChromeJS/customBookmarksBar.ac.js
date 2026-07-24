@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.1
+// @version         20260724.4
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -54,7 +54,8 @@
     const DEFAULT_FOLDER_ID = '1';
     const SEPARATOR_URL = 'http://bookmark.placeholder.url/';
     const FOLDER_POPUP_PREFIX = 'userchrome-bookmarks-folder:';
-    const OVERFLOW_POPUP_ID = 'userchrome-bookmarks-overflow';
+    const MORE_POPUP_ID = 'userchrome-bookmarks-more';
+    const MORE_BUTTON_ID = 'userchrome-custom-bookmarks-more';
     const BOOKMARK_POPUP_CLASS = 'userchrome-bookmark-popup-menu';
     const CONTEXT_MENU_CLASS = 'userchrome-bookmark-context-menu';
     const DIALOG_ID = 'userchrome-bookmark-dialog';
@@ -64,7 +65,7 @@
     const MOUNT_DELAY = 120;
     const FAVICON_SIZES = [16, 24, 32];
     const FOLDER_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" class="folder-icon"><g class="fill-override"><svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2.35717 3.36075C2.13323 3.58693 2.00515 3.89221 2 4.21203V11.7872C1.99441 11.9479 2.02163 12.1081 2.07996 12.2577C2.13828 12.4073 2.22648 12.5431 2.33904 12.6568C2.4516 12.7705 2.58613 12.8596 2.73425 12.9185C2.88237 12.9774 3.04091 13.0049 3.2 12.9993H12.8C13.1167 12.9941 13.4189 12.8647 13.6428 12.6385C13.8668 12.4123 13.9948 12.1071 14 11.7872L14 6C14 5.5 13.5 5 13 5H8L6.8 3H3.2C2.88334 3.0052 2.5811 3.13457 2.35717 3.36075ZM2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04966 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z"></path><path fill-rule="evenodd" d="M2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04967 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z" fill-opacity="0.1"></path></svg></g></svg>';
-    const OVERFLOW_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.92429 3.07574C3.68997 2.84142 3.31007 2.84142 3.07576 3.07574C2.84145 3.31005 2.84145 3.68995 3.07576 3.92426L7.1515 8L3.07576 12.0757C2.84145 12.3101 2.84145 12.6899 3.07576 12.9243C3.31007 13.1586 3.68997 13.1586 3.92429 12.9243L8.84855 8L3.92429 3.07574Z" fill="currentColor"></path><path d="M8.92429 3.07574C8.68997 2.84142 8.31007 2.84142 8.07576 3.07574C7.84145 3.31005 7.84145 3.68995 8.07576 3.92426L12.1515 8L8.07576 12.0757C7.84145 12.3101 7.84145 12.6899 8.07576 12.9243C8.31007 13.1586 8.68997 13.1586 8.92429 12.9243L13.8486 8L8.92429 3.07574Z" fill="currentColor"></path></svg>';
+    const MORE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.92429 3.07574C3.68997 2.84142 3.31007 2.84142 3.07576 3.07574C2.84145 3.31005 2.84145 3.68995 3.07576 3.92426L7.1515 8L3.07576 12.0757C2.84145 12.3101 2.84145 12.6899 3.07576 12.9243C3.31007 13.1586 3.68997 13.1586 3.92429 12.9243L8.84855 8L3.92429 3.07574Z" fill="currentColor"></path><path d="M8.92429 3.07574C8.68997 2.84142 8.31007 2.84142 8.07576 3.07574C7.84145 3.31005 7.84145 3.68995 8.07576 3.92426L12.1515 8L8.07576 12.0757C7.84145 12.3101 7.84145 12.6899 8.07576 12.9243C8.31007 13.1586 8.68997 13.1586 8.92429 12.9243L13.8486 8L8.92429 3.07574Z" fill="currentColor"></path></svg>';
 
     if (window[INSTANCE_KEY]) {
         console.info(LOG_PREFIX, 'Script instance already exists.');
@@ -81,8 +82,6 @@
         emptyState: null,
         hostObserver: null,
         resizeObserver: null,
-        nativeChevron: null,
-        nativeChevronObserver: null,
         stopAddedNodeObserver: null,
         mountTimer: null,
         refreshTimer: null,
@@ -99,9 +98,9 @@
         },
         buttons: [],
         hiddenNodes: [],
-        overflowKey: '',
+        moreKey: '',
         folderPopups: new Map(),
-        overflowPopup: null,
+        morePopup: null,
         activePopupController: null,
         dialog: null,
         bookmarkListeners: [],
@@ -184,6 +183,31 @@
                 background: var(--colorBg, #fff);
                 color: var(--colorFg, #222);
                 font: inherit;
+                position: relative;
+            }
+
+            #${MORE_BUTTON_ID} {
+                display: inline-flex;
+                flex: 0 0 28px;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                min-width: 28px;
+                height: 100%;
+                box-sizing: border-box;
+                padding: 0;
+                position: absolute;
+                right: 0;
+                top: 0;
+            }
+
+            #${MORE_BUTTON_ID}[hidden] {
+                display: none !important;
+            }
+
+            #${MORE_BUTTON_ID} > svg {
+                display: block;
+                pointer-events: none;
             }
 
             #${ROW_ID} .bookmark-item.folder:focus,
@@ -1192,62 +1216,6 @@
         }) || null;
     }
 
-    function findNativeChevron () {
-        if (!state.host) {
-            return null;
-        }
-
-        return Array.from(state.host.querySelectorAll('.bookmarkbarItem.chevron')).find(function (chevron) {
-            return chevron instanceof HTMLElement
-                && (!state.row || !state.row.contains(chevron));
-        }) || null;
-    }
-
-    function isNativeChevronVisible () {
-        const chevron = state.nativeChevron;
-        if (!chevron || !chevron.isConnected || chevron.hidden) {
-            return false;
-        }
-
-        const style = window.getComputedStyle(chevron);
-        return style.display !== 'none'
-            && style.visibility !== 'hidden'
-            && chevron.getClientRects().length > 0;
-    }
-
-    function observeNativeChevron () {
-        const nativeChevron = findNativeChevron();
-        if (state.nativeChevron === nativeChevron) {
-            return;
-        }
-
-        const previousChevron = state.nativeChevron;
-        if (state.resizeObserver && previousChevron) {
-            state.resizeObserver.unobserve(previousChevron);
-        }
-
-        if (state.nativeChevronObserver) {
-            state.nativeChevronObserver.disconnect();
-            state.nativeChevronObserver = null;
-        }
-
-        state.nativeChevron = nativeChevron;
-        if (nativeChevron) {
-            if (state.resizeObserver) {
-                state.resizeObserver.observe(nativeChevron);
-            }
-            state.nativeChevronObserver = new MutationObserver(function () {
-                requestAnimationFrame(layoutOverflow);
-            });
-            state.nativeChevronObserver.observe(nativeChevron, {
-                attributes: true,
-                attributeFilter: ['class', 'hidden', 'style']
-            });
-        }
-
-        requestAnimationFrame(layoutOverflow);
-    }
-
     function getMenuItemId (prefix, node) {
         return prefix + String(node.id || '').replace(/[^a-zA-Z0-9_-]/g, '_');
     }
@@ -1582,15 +1550,15 @@
         });
         state.folderPopups.clear();
 
-        if (state.overflowPopup) {
+        if (state.morePopup) {
             try {
-                state.overflowPopup.unregister();
+                state.morePopup.unregister();
             } catch (error) {
-                reportError('Failed to unregister overflow popup.', error);
+                reportError('Failed to unregister more popup.', error);
             }
-            state.overflowPopup = null;
+            state.morePopup = null;
         }
-        state.overflowKey = '';
+        state.moreKey = '';
     }
 
     function ensureFolderPopup (node) {
@@ -1628,7 +1596,7 @@
         }
     }
 
-    function ensureOverflowPopup () {
+    function ensureMorePopup () {
         const menu = getMenuApi();
         const hiddenNodes = state.hiddenNodes.slice();
         if (!menu || typeof menu.register !== 'function' || !hiddenNodes.length) {
@@ -1638,36 +1606,36 @@
         const key = hiddenNodes.map(function (node) {
             return node.id;
         }).join(',');
-        if (state.overflowPopup && state.overflowKey === key) {
-            return state.overflowPopup;
+        if (state.morePopup && state.moreKey === key) {
+            return state.morePopup;
         }
 
-        if (state.overflowPopup) {
+        if (state.morePopup) {
             try {
-                state.overflowPopup.unregister();
+                state.morePopup.unregister();
             } catch (error) {
-                reportError('Failed to replace overflow popup.', error);
+                reportError('Failed to replace more popup.', error);
             }
-            state.overflowPopup = null;
+            state.morePopup = null;
         }
 
         try {
             const controller = menu.register({
-                id: OVERFLOW_POPUP_ID,
+                id: MORE_POPUP_ID,
                 ariaLabel: '更多书签',
                 className: BOOKMARK_POPUP_CLASS,
                 items: createBookmarkMenuItems(hiddenNodes)
             });
             if (!controller) {
-                warn('Overflow popup registration returned no controller.');
+                warn('More popup registration returned no controller.');
                 return null;
             }
-            state.overflowPopup = controller;
-            state.overflowKey = key;
-            log('Registered overflow popup.', { hiddenCount: hiddenNodes.length });
+            state.morePopup = controller;
+            state.moreKey = key;
+            log('Registered more popup.', { hiddenCount: hiddenNodes.length });
             return controller;
         } catch (error) {
-            reportError('Failed to register overflow popup.', error);
+            reportError('Failed to register more popup.', error);
             return null;
         }
     }
@@ -1680,7 +1648,7 @@
             .map(function (entry) {
                 return entry.element;
             });
-        if (!state.moreButton.hidden) {
+        if (!state.moreButton.hasAttribute('hidden')) {
             visibleButtons.push(state.moreButton);
         }
         return visibleButtons;
@@ -2021,10 +1989,10 @@
         }
     }
 
-    function openOverflowMenu () {
+    function openMoreMenu () {
         const button = state.moreButton;
-        const controller = ensureOverflowPopup();
-        if (!button || button.hidden || !controller) {
+        const controller = ensureMorePopup();
+        if (!button || button.hasAttribute('hidden') || !controller) {
             return;
         }
 
@@ -2038,16 +2006,16 @@
                 if (state.activePopupController === controller) {
                     state.activePopupController = null;
                 }
-                log('Overflow popup closed.', { reason });
+                log('More popup closed.', { reason });
             }
         });
         if (!popup) {
-            warn('Overflow popup did not open.');
+            warn('More popup did not open.');
             return;
         }
         state.activePopupController = controller;
         button.setAttribute('aria-expanded', 'true');
-        log('Overflow popup opened.', { hiddenCount: state.hiddenNodes.length });
+        log('More popup opened.', { hiddenCount: state.hiddenNodes.length });
     }
 
     function getItemWidthTotal (entries, count) {
@@ -2059,6 +2027,26 @@
             total += (count - 1) * 2;
         }
         return total;
+    }
+
+    function setMoreButtonHidden (hidden) {
+        if (hidden) {
+            state.moreButton.setAttribute('hidden', '');
+        } else {
+            state.moreButton.removeAttribute('hidden');
+        }
+    }
+
+    function syncMoreButtonVisibility () {
+        setMoreButtonHidden(state.hiddenNodes.length === 0);
+    }
+
+    function measureMoreButtonWidth () {
+        const wasHidden = state.moreButton.hasAttribute('hidden');
+        state.moreButton.removeAttribute('hidden');
+        const width = state.moreButton.offsetWidth;
+        setMoreButtonHidden(wasHidden);
+        return width;
     }
 
     function updateRovingTabIndex () {
@@ -2074,53 +2062,31 @@
         });
         if (firstVisible) {
             firstVisible.element.tabIndex = 0;
-        } else if (!state.moreButton.hidden) {
+        } else if (!state.moreButton.hasAttribute('hidden')) {
             state.moreButton.tabIndex = 0;
         }
     }
 
-    function layoutOverflow () {
+    function layoutMore () {
         if (!state.row || !state.items || !state.moreButton || !state.row.isConnected) {
             return;
         }
 
-        // Measure with every item visible first, then move only the trailing items into the overflow menu.
+        // Measure with every item visible first, then move only the trailing items into the more menu.
         state.buttons.forEach(function (entry) {
             entry.element.hidden = false;
         });
-        state.moreButton.hidden = true;
         state.hiddenNodes = [];
+        syncMoreButtonVisibility();
 
         const allWidth = getItemWidthTotal(state.buttons, state.buttons.length);
         const rowWidth = state.row.clientWidth;
-        if (allWidth <= rowWidth) {
-            if (state.overflowPopup) {
-                try {
-                    state.overflowPopup.unregister();
-                } catch (error) {
-                    reportError('Failed to remove unused overflow popup.', error);
-                }
-                state.overflowPopup = null;
-            }
-            state.overflowKey = '';
-            // Mirror the native toolbar chevron even when this row has no hidden bookmarks.
-            state.moreButton.hidden = !isNativeChevronVisible();
-            updateRovingTabIndex();
-            return;
-        }
-
-        // Keep this row's overflow entry in step with Vivaldi's native bookmark-bar chevron.
-        // The native chevron can change independently when Vivaldi rebuilds or resizes its toolbar.
-        if (!isNativeChevronVisible()) {
-            updateRovingTabIndex();
-            return;
-        }
-
-        state.moreButton.hidden = false;
-        const availableWidth = Math.max(0, rowWidth - state.moreButton.offsetWidth - 2);
         let visibleCount = state.buttons.length;
-        while (visibleCount > 0 && getItemWidthTotal(state.buttons, visibleCount) > availableWidth) {
-            visibleCount -= 1;
+        if (allWidth > rowWidth) {
+            const availableWidth = Math.max(0, rowWidth - measureMoreButtonWidth() - 2);
+            while (visibleCount > 0 && getItemWidthTotal(state.buttons, visibleCount) > availableWidth) {
+                visibleCount -= 1;
+            }
         }
 
         state.buttons.forEach(function (entry, index) {
@@ -2129,21 +2095,22 @@
         state.hiddenNodes = state.buttons.slice(visibleCount).map(function (entry) {
             return entry.node;
         });
+        syncMoreButtonVisibility();
 
-        const nextOverflowKey = state.hiddenNodes.map(function (node) {
+        const nextMoreKey = state.hiddenNodes.map(function (node) {
             return node.id;
         }).join(',');
-        if (nextOverflowKey !== state.overflowKey && state.overflowPopup) {
+        if (nextMoreKey !== state.moreKey && state.morePopup) {
             try {
-                state.overflowPopup.unregister();
+                state.morePopup.unregister();
             } catch (error) {
-                reportError('Failed to update overflow popup.', error);
+                reportError('Failed to update more popup.', error);
             }
-            state.overflowPopup = null;
+            state.morePopup = null;
         }
-        state.overflowKey = nextOverflowKey;
+        state.moreKey = nextMoreKey;
         updateRovingTabIndex();
-        log('Calculated bookmark overflow.', {
+        log('Calculated bookmark layout.', {
             rowWidth,
             visibleCount,
             hiddenCount: state.hiddenNodes.length
@@ -2160,7 +2127,7 @@
         state.items.replaceChildren();
         state.buttons = [];
         state.hiddenNodes = [];
-        state.moreButton.hidden = true;
+        syncMoreButtonVisibility();
 
         if (!state.data.topLevel.length) {
             const empty = createElement('span', {
@@ -2170,7 +2137,7 @@
             state.items.appendChild(empty);
             state.emptyState = empty;
             updateRovingTabIndex();
-            requestAnimationFrame(layoutOverflow);
+            requestAnimationFrame(layoutMore);
             log('Rendered an empty bookmark bar.');
             return;
         }
@@ -2186,7 +2153,7 @@
         });
 
         updateRovingTabIndex();
-        requestAnimationFrame(layoutOverflow);
+        requestAnimationFrame(layoutMore);
         log('Rendered bookmark bar.', {
             itemCount: state.buttons.length,
             displayMode: state.data.displayMode
@@ -2202,11 +2169,6 @@
             state.resizeObserver.disconnect();
             state.resizeObserver = null;
         }
-        if (state.nativeChevronObserver) {
-            state.nativeChevronObserver.disconnect();
-            state.nativeChevronObserver = null;
-        }
-
         disposePopupControllers();
         if (state.row) {
             state.row.remove();
@@ -2220,7 +2182,6 @@
         state.items = null;
         state.moreButton = null;
         state.emptyState = null;
-        state.nativeChevron = null;
         state.buttons = [];
         state.hiddenNodes = [];
         if (state.dialog && state.dialog.open) {
@@ -2263,18 +2224,19 @@
         attachRowEventBoundary(row);
         const items = createElement('div', { class: 'observer' });
         const moreButton = createElement('button', {
+            id: MORE_BUTTON_ID,
             type: 'button',
-            class: 'bookmarkbarItem chevron',
+            class: 'bookmarkbarItem more',
             'aria-label': '更多书签',
             'aria-haspopup': 'menu',
             'aria-expanded': 'false',
             title: '更多书签',
-            innerHTML: OVERFLOW_ICON_SVG
+            innerHTML: MORE_ICON_SVG
         });
         moreButton.addEventListener('click', function (event) {
             event.preventDefault();
             event.stopPropagation();
-            openOverflowMenu();
+            openMoreMenu();
         });
         attachToolbarKeyboardNavigation(moreButton);
 
@@ -2302,8 +2264,7 @@
             if (!nativeToolbarChanged) {
                 return;
             }
-            observeNativeChevron();
-            requestAnimationFrame(layoutOverflow);
+            requestAnimationFrame(layoutMore);
             if (!state.row || !state.row.isConnected) {
                 scheduleMount('custom row removed by native UI');
             }
@@ -2317,16 +2278,13 @@
 
         if (typeof ResizeObserver === 'function') {
             state.resizeObserver = new ResizeObserver(function () {
-                observeNativeChevron();
-                requestAnimationFrame(layoutOverflow);
+                requestAnimationFrame(layoutMore);
             });
             state.resizeObserver.observe(row);
             state.resizeObserver.observe(host);
         } else {
-            warn('ResizeObserver is unavailable; overflow will update on render only.');
+            warn('ResizeObserver is unavailable; more menu will update on render only.');
         }
-
-        observeNativeChevron();
 
         log('Mounted custom bookmark bar.', {
             reason,
@@ -2485,7 +2443,7 @@
             scheduleMount('window focus');
         });
         window.addEventListener('resize', function () {
-            requestAnimationFrame(layoutOverflow);
+            requestAnimationFrame(layoutMore);
         });
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
