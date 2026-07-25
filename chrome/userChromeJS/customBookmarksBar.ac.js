@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260725.1
+// @version         20260725.2
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -524,19 +524,11 @@
             }
 
             #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator {
-                margin: 4px 0;
-                background: color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent);
+                margin: 0;
             }
 
-            #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator[data-contextmenu="true"] {
-                margin: 0;
-                background: linear-gradient(
-                    to bottom,
-                    transparent 4px,
-                    color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent) 4px,
-                    color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent) 5px,
-                    transparent 5px
-                );
+            #userchrome-menu-root .${CONTEXT_MENU_CLASS} .userchrome-menu-separator::after {
+                border-bottom-color: color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent);
             }
 
             #${DIALOG_ID} {

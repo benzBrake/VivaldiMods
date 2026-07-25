@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.4
+// @version         0.2.5
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260725 修复长菜单分隔线收缩并统一使用 border-bottom 绘制
 // @note            20260724 菜单标签增加 Windows 风格助记键语法和按键分发
 // @note            20260724 收紧菜单项间距并禁止菜单横向滚动
 // @note            20260723 菜单项增加右键回调、自定义样式类和可恢复叠菜单
@@ -642,21 +643,20 @@
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-separator {
-                    height: 1px;
-                    margin: 4px 6px;
-                    background: var(--colorBorder, rgba(0, 0, 0, 0.16));
-                }
-
-                #${MENU_ROOT_ID} .userchrome-menu-separator[data-contextmenu="true"] {
+                    position: relative;
+                    flex: 0 0 9px;
                     height: 9px;
                     margin: 0 6px;
-                    background: linear-gradient(
-                        to bottom,
-                        transparent 4px,
-                        var(--colorBorder, rgba(0, 0, 0, 0.16)) 4px,
-                        var(--colorBorder, rgba(0, 0, 0, 0.16)) 5px,
-                        transparent 5px
-                    );
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-separator::after {
+                    content: '';
+                    position: absolute;
+                    top: 4px;
+                    right: 0;
+                    left: 0;
+                    border-bottom: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.16));
+                    pointer-events: none;
                 }
             `;
             document.head.appendChild(style);
