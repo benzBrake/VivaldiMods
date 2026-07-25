@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260724.11
+// @version         20260724.12
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -137,6 +137,8 @@
         morePopup: null,
         activePopupController: null,
         dialog: null,
+        bookmarkClipboard: null,
+        clipboardStorageListener: null,
         bookmarkListeners: [],
         prefListener: null,
         runtimeListenersAttached: false,
@@ -1274,7 +1276,74 @@
         return snapshot;
     }
 
-    function writeBookmarkClipboard (mode, node) {
+    function normalizeBookmarkClipboard (payload) {
+        if (!payload
+            || payload.version !== CLIPBOARD_VERSION
+            || !['cut', 'copy'].includes(payload.mode)
+            || typeof payload.sourceId !== 'string'
+            || !payload.snapshot
+            || !Array.isArray(payload.sourceDescendantIds)) {
+            return null;
+        }
+        return payload;
+    }
+
+    function getBookmarkClipboardStorage () {
+        const storage = window.chrome && window.chrome.storage && window.chrome.storage.session;
+        return storage
+            && typeof storage.get === 'function'
+            && typeof storage.set === 'function'
+            && typeof storage.remove === 'function'
+            ? storage
+            : null;
+    }
+
+    function getBookmarkClipboardFallbackStorage () {
+        try {
+            return window.sessionStorage || null;
+        } catch (error) {
+            reportError('Failed to access session bookmark clipboard storage.', error);
+            return null;
+        }
+    }
+
+    async function loadBookmarkClipboard () {
+        const storage = getBookmarkClipboardStorage();
+        if (storage) {
+            try {
+                const stored = await storage.get(CLIPBOARD_KEY);
+                const payload = normalizeBookmarkClipboard(stored && stored[CLIPBOARD_KEY]);
+                state.bookmarkClipboard = payload;
+                if (!payload && stored && Object.prototype.hasOwnProperty.call(stored, CLIPBOARD_KEY)) {
+                    await storage.remove(CLIPBOARD_KEY);
+                }
+                return payload;
+            } catch (error) {
+                reportError('Failed to load bookmark clipboard from chrome.storage.session.', error);
+            }
+        }
+
+        const fallback = getBookmarkClipboardFallbackStorage();
+        if (!fallback) {
+            state.bookmarkClipboard = null;
+            return null;
+        }
+        try {
+            const raw = fallback.getItem(CLIPBOARD_KEY);
+            const payload = normalizeBookmarkClipboard(raw ? JSON.parse(raw) : null);
+            state.bookmarkClipboard = payload;
+            if (raw && !payload) {
+                fallback.removeItem(CLIPBOARD_KEY);
+            }
+            return payload;
+        } catch (error) {
+            reportError('Failed to load bookmark clipboard from sessionStorage.', error);
+            state.bookmarkClipboard = null;
+            return null;
+        }
+    }
+
+    async function writeBookmarkClipboard (mode, node) {
         const payload = {
             version: CLIPBOARD_VERSION,
             mode: mode,
@@ -1283,45 +1352,58 @@
             snapshot: createClipboardSnapshot(node),
             timestamp: Date.now()
         };
-        try {
-            localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(payload));
-            notify(mode === 'cut' ? '已剪切书签项目。' : '已复制书签项目。', 'success');
-        } catch (error) {
-            reportError('Failed to write bookmark clipboard.', error);
-            notify('无法写入书签剪贴板。', 'error');
+        state.bookmarkClipboard = payload;
+
+        let persisted = false;
+        const storage = getBookmarkClipboardStorage();
+        if (storage) {
+            try {
+                await storage.set({ [CLIPBOARD_KEY]: payload });
+                persisted = true;
+            } catch (error) {
+                reportError('Failed to write bookmark clipboard to chrome.storage.session.', error);
+            }
         }
+        if (!persisted) {
+            const fallback = getBookmarkClipboardFallbackStorage();
+            if (fallback) {
+                try {
+                    fallback.setItem(CLIPBOARD_KEY, JSON.stringify(payload));
+                    persisted = true;
+                } catch (error) {
+                    reportError('Failed to write bookmark clipboard to sessionStorage.', error);
+                }
+            }
+        }
+        if (!persisted) {
+            warn('Bookmark clipboard is only available in the current Vivaldi window.');
+        }
+        notify(mode === 'cut' ? '已剪切书签项目。' : '已复制书签项目。', 'success');
     }
 
-    function clearBookmarkClipboard () {
-        try {
-            localStorage.removeItem(CLIPBOARD_KEY);
-        } catch (error) {
-            reportError('Failed to clear bookmark clipboard.', error);
+    async function clearBookmarkClipboard () {
+        state.bookmarkClipboard = null;
+
+        const storage = getBookmarkClipboardStorage();
+        if (storage) {
+            try {
+                await storage.remove(CLIPBOARD_KEY);
+            } catch (error) {
+                reportError('Failed to clear bookmark clipboard from chrome.storage.session.', error);
+            }
+        }
+        const fallback = getBookmarkClipboardFallbackStorage();
+        if (fallback) {
+            try {
+                fallback.removeItem(CLIPBOARD_KEY);
+            } catch (error) {
+                reportError('Failed to clear bookmark clipboard from sessionStorage.', error);
+            }
         }
     }
 
     function readBookmarkClipboard () {
-        try {
-            const raw = localStorage.getItem(CLIPBOARD_KEY);
-            if (!raw) {
-                return null;
-            }
-            const payload = JSON.parse(raw);
-            if (!payload
-                || payload.version !== CLIPBOARD_VERSION
-                || !['cut', 'copy'].includes(payload.mode)
-                || typeof payload.sourceId !== 'string'
-                || !payload.snapshot
-                || !Array.isArray(payload.sourceDescendantIds)) {
-                clearBookmarkClipboard();
-                return null;
-            }
-            return payload;
-        } catch (error) {
-            reportError('Failed to read bookmark clipboard.', error);
-            clearBookmarkClipboard();
-            return null;
-        }
+        return state.bookmarkClipboard;
     }
 
     function canPasteIntoFolder (folder, clipboard) {
@@ -1380,13 +1462,13 @@
                         ? await getBookmarkNodes(clipboard.sourceId)
                         : await getBookmarkSubTree(clipboard.sourceId);
                 } catch (sourceError) {
-                    clearBookmarkClipboard();
+                    await clearBookmarkClipboard();
                     notify('剪切的书签项目已不存在。', 'warn');
                     return;
                 }
                 const source = Array.isArray(sourceResult) ? sourceResult[0] : sourceResult;
                 if (!source) {
-                    clearBookmarkClipboard();
+                    await clearBookmarkClipboard();
                     notify('剪切的书签项目已不存在。', 'warn');
                     return;
                 }
@@ -1398,7 +1480,7 @@
                     }
                 }
                 await moveBookmark(clipboard.sourceId, { parentId: folder.id });
-                clearBookmarkClipboard();
+                await clearBookmarkClipboard();
                 notify('已移动书签项目。', 'success');
                 return;
             }
@@ -1869,14 +1951,14 @@
                 id: 'cut',
                 label: '剪切(&C)',
                 onSelect: function () {
-                    writeBookmarkClipboard('cut', node);
+                    return writeBookmarkClipboard('cut', node);
                 }
             },
             {
                 id: 'copy',
                 label: '复制(&C)',
                 onSelect: function () {
-                    writeBookmarkClipboard('copy', node);
+                    return writeBookmarkClipboard('copy', node);
                 }
             }
         );
@@ -2916,6 +2998,21 @@
         }
         state.runtimeListenersAttached = true;
 
+        const storage = window.chrome && window.chrome.storage;
+        const storageChanged = storage && storage.onChanged;
+        if (storageChanged && typeof storageChanged.addListener === 'function') {
+            state.clipboardStorageListener = function (changes, areaName) {
+                if (areaName !== 'session' || !changes || !changes[CLIPBOARD_KEY]) {
+                    return;
+                }
+                state.bookmarkClipboard = normalizeBookmarkClipboard(changes[CLIPBOARD_KEY].newValue);
+            };
+            storageChanged.addListener(state.clipboardStorageListener);
+            log('Attached bookmark clipboard storage listener.');
+        } else {
+            warn('chrome.storage.onChanged is unavailable; bookmark clipboard is window-local.');
+        }
+
         attachBookmarkEvent('onCreated', 'created', function (id, node) {
             if (isRelevantEvent('created', id, node)) {
                 scheduleRefresh('bookmark created');
@@ -3028,6 +3125,7 @@
         });
         ensureStyle();
         attachRuntimeListeners();
+        await loadBookmarkClipboard();
         scheduleMount('initial');
 
         const loaded = await loadBookmarkData('initial');
