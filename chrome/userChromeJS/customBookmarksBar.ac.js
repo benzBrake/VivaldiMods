@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260725.3
+// @version         20260725.4
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -90,12 +90,14 @@
         more: 'userchrome-custom-bookmarks-bar-more',
         dragging: 'userchrome-custom-bookmarks-bar-dragging',
         dropBefore: 'userchrome-custom-bookmarks-bar-drop-before',
-        dropAfter: 'userchrome-custom-bookmarks-bar-drop-after'
+        dropAfter: 'userchrome-custom-bookmarks-bar-drop-after',
+        dropInto: 'userchrome-custom-bookmarks-bar-drop-into'
     });
     const CLIPBOARD_KEY = 'USERCHROME_BOOKMARK_CLIPBOARD';
     const CLIPBOARD_VERSION = 1;
     const REFRESH_DELAY = 120;
     const MOUNT_DELAY = 120;
+    const FOLDER_DRAG_OPEN_DELAY = 650;
     const FAVICON_SIZES = [16, 24, 32];
     const FOLDER_ICON_SVG = `<svg width="16" height="16" viewBox="0 0 16 16" class="${BOOKMARK_BAR_CLASSES.icon} ${BOOKMARK_BAR_CLASSES.folderIcon}"><g class="${BOOKMARK_BAR_CLASSES.folderFill}"><svg width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M2.35717 3.36075C2.13323 3.58693 2.00515 3.89221 2 4.21203V11.7872C1.99441 11.9479 2.02163 12.1081 2.07996 12.2577C2.13828 12.4073 2.22648 12.5431 2.33904 12.6568C2.4516 12.7705 2.58613 12.8596 2.73425 12.9185C2.88237 12.9774 3.04091 13.0049 3.2 12.9993H12.8C13.1167 12.9941 13.4189 12.8647 13.6428 12.6385C13.8668 12.4123 13.9948 12.1071 14 11.7872L14 6C14 5.5 13.5 5 13 5H8L6.8 3H3.2C2.88334 3.0052 2.5811 3.13457 2.35717 3.36075ZM2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04966 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z"></path><path fill-rule="evenodd" d="M2.99939 11.822L3 11.8046V4.22318C3.00223 4.16171 3.02741 4.10511 3.06779 4.06432C3.10773 4.02398 3.15929 4.00208 3.21161 4H6.24589L7.5 6H12.8C12.9105 6 13 6.08796 13 6.19842C13 7.13107 13 11.0636 13 11.7761C12.9978 11.8376 12.9726 11.8942 12.9322 11.935C12.8923 11.9753 12.8407 11.9972 12.7884 11.9993H3.18227L3.16455 11.9999C3.14406 12.0006 3.12343 11.9971 3.10383 11.9893C3.08421 11.9815 3.06567 11.9694 3.04967 11.9533C3.03364 11.9371 3.02051 11.9171 3.01165 11.8944C3.00278 11.8717 2.99853 11.847 2.99939 11.822Z" fill-opacity="0.1"></path></svg></g></svg>`;
     const FOLDER_CHEVRON_SVG = '<svg width="11" height="6" xmlns="http://www.w3.org/2000/svg"><path d="M1.354 4.894a.497.497 0 1 0 .702.702l3.423-3.423L8.9 5.596a.491.491 0 1 0 .695-.695L5.851 1.156a.49.49 0 0 0-.27-.137.496.496 0 0 0-.48.128L1.354 4.894z"></path></svg>';
@@ -141,11 +143,16 @@
             sourceId: '',
             sourceParentId: '',
             sourceIndex: -1,
+            sourceDescendantIds: new Set(),
             sourceElement: null,
             targetId: '',
+            targetParentId: '',
             targetIndex: -1,
             targetElement: null,
             position: '',
+            folderOpenTimer: null,
+            folderOpenId: '',
+            folderOpenElement: null,
             moveInFlight: false
         },
         folderPopups: new Map(),
@@ -388,6 +395,10 @@
                 opacity: 0.45;
             }
 
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator).${BOOKMARK_BAR_CLASSES.dragging} {
+                opacity: 0.45;
+            }
+
             #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}.${BOOKMARK_BAR_CLASSES.dropBefore}::after,
             #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}.${BOOKMARK_BAR_CLASSES.dropAfter}::after {
                 content: '';
@@ -406,6 +417,40 @@
 
             #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}.${BOOKMARK_BAR_CLASSES.dropAfter}::after {
                 inset-inline-end: -1px;
+            }
+
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator) {
+                position: relative;
+            }
+
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > .userchrome-menu-item:disabled {
+                pointer-events: none;
+            }
+
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator).${BOOKMARK_BAR_CLASSES.dropBefore}::before,
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator).${BOOKMARK_BAR_CLASSES.dropAfter}::before {
+                content: '';
+                height: 2px;
+                border-radius: 1px;
+                background-color: var(--colorHighlightBg, #006edc);
+                pointer-events: none;
+                position: absolute;
+                z-index: 3;
+                inset-inline: 4px;
+            }
+
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator).${BOOKMARK_BAR_CLASSES.dropBefore}::before {
+                top: -1px;
+            }
+
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS} > :is(.userchrome-menu-item, .userchrome-menu-separator).${BOOKMARK_BAR_CLASSES.dropAfter}::before {
+                bottom: -1px;
+            }
+
+            #${ROW_ID}.${BOOKMARK_BAR_CLASSES.dropInto},
+            #userchrome-menu-root .${BOOKMARK_POPUP_CLASS}.${BOOKMARK_BAR_CLASSES.dropInto} {
+                outline: 2px solid var(--colorHighlightBg, #006edc);
+                outline-offset: -3px;
             }
 
             .active-pane-selection.hasfocus #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}:focus-visible,
@@ -1683,6 +1728,7 @@
                 return {
                     id: getMenuItemId('separator-', node),
                     type: 'separator',
+                    bookmarkNode: node,
                     onContextMenu: function (selection) {
                         openBookmarkContextMenu(node, selection.position, selection.element);
                     }
@@ -1695,6 +1741,7 @@
                     id: getMenuItemId('bookmark-', node),
                     label: label,
                     icon: getFaviconUrl(node.url, FAVICON_SIZES[0]),
+                    bookmarkNode: node,
                     onSelect: function (selection) {
                         return openBookmark(node, selection && selection.event);
                     },
@@ -1707,6 +1754,7 @@
             return {
                 id: getMenuItemId('folder-', node),
                 label: label,
+                bookmarkNode: node,
                 children: createFolderMenuItems(node),
                 onContextMenu: function (selection) {
                     openBookmarkContextMenu(node, selection.position, selection.element);
@@ -1729,6 +1777,116 @@
             { type: 'separator' },
             ...createBookmarkMenuItems(folder.children)
         ];
+    }
+
+    function openBookmarkPopupSubmenu (element) {
+        if (element.getAttribute('aria-expanded') === 'true') {
+            return;
+        }
+        if (document.activeElement === element) {
+            element.dispatchEvent(new FocusEvent('focus'));
+        } else {
+            element.focus({ preventScroll: true });
+        }
+    }
+
+    function getBookmarkPopupDropIndex (menuElement, folder, event) {
+        const bookmarkElements = Array.from(menuElement.children).filter(function (element) {
+            return element instanceof HTMLElement
+                && element.dataset.userchromeBookmarkDropTarget === 'true';
+        });
+        if (!bookmarkElements.length) {
+            return 0;
+        }
+
+        const firstRect = bookmarkElements[0].getBoundingClientRect();
+        return event.clientY < firstRect.top ? 0 : folder.children.length;
+    }
+
+    function attachBookmarkPopupDropZone (menuElement, folder) {
+        if (!isManualSorting(state.data.sorting) || !menuElement || !folder) {
+            return;
+        }
+
+        function isMenuBackgroundEvent (event) {
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target || target.closest('.userchrome-menu') !== menuElement) {
+                return false;
+            }
+            return !target.closest('[data-userchrome-bookmark-drop-target="true"]');
+        }
+
+        function updateTarget (event) {
+            if (!isMenuBackgroundEvent(event)) {
+                return false;
+            }
+            const index = getBookmarkPopupDropIndex(menuElement, folder, event);
+            return updateBookmarkFolderDropTarget(menuElement, folder, index);
+        }
+
+        menuElement.addEventListener('dragover', function (event) {
+            if (!updateTarget(event)) {
+                return;
+            }
+            event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = 'move';
+            }
+            clearBookmarkFolderOpenTimer();
+        });
+
+        menuElement.addEventListener('dragleave', function (event) {
+            if (state.drag.targetElement === menuElement
+                && (!event.relatedTarget || !menuElement.contains(event.relatedTarget))) {
+                clearBookmarkDropTarget();
+            }
+        });
+
+        menuElement.addEventListener('drop', function (event) {
+            if (!updateTarget(event)) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            void moveBookmarkFromDrop();
+        });
+    }
+
+    function decorateBookmarkPopupLevel (menuElement, items, folder) {
+        if (!(menuElement instanceof HTMLElement) || !Array.isArray(items)) {
+            return;
+        }
+
+        attachBookmarkPopupDropZone(menuElement, folder);
+        const entryElements = Array.from(menuElement.children).filter(function (element) {
+            return element.classList
+                && (element.classList.contains('userchrome-menu-item')
+                    || element.classList.contains('userchrome-menu-separator'));
+        });
+        entryElements.forEach(function (element, index) {
+            const item = items[index];
+            const node = item && item.bookmarkNode;
+            if (node) {
+                attachBookmarkDragSorting(element, node, {
+                    orientation: 'vertical',
+                    openFolder: isFolderNode(node)
+                        ? function () {
+                            openBookmarkPopupSubmenu(element);
+                        }
+                        : null
+                });
+            }
+
+            if (!item || !Array.isArray(item.children) || !item.children.length) {
+                return;
+            }
+            const submenu = element.nextElementSibling;
+            if (submenu
+                && submenu.classList
+                && submenu.classList.contains('userchrome-menu-submenu')) {
+                decorateBookmarkPopupLevel(submenu, item.children, node || null);
+            }
+        });
     }
 
     function getBookmarkBarFolder () {
@@ -2197,16 +2355,18 @@
         }
 
         try {
+            const items = createFolderMenuItems(node);
             const controller = menu.register({
                 id: popupId,
                 ariaLabel: getNodeLabel(node, '文件夹'),
                 className: BOOKMARK_POPUP_CLASS,
-                items: createFolderMenuItems(node)
+                items: items
             });
             if (!controller) {
                 warn('Popup registration returned no controller.', { popupId });
                 return null;
             }
+            decorateBookmarkPopupLevel(controller.element, items, node);
             state.folderPopups.set(popupId, controller);
             log('Registered folder popup.', {
                 popupId,
@@ -2243,16 +2403,18 @@
         }
 
         try {
+            const items = createBookmarkMenuItems(hiddenNodes);
             const controller = menu.register({
                 id: MORE_POPUP_ID,
                 ariaLabel: '更多书签',
                 className: BOOKMARK_POPUP_CLASS,
-                items: createBookmarkMenuItems(hiddenNodes)
+                items: items
             });
             if (!controller) {
                 warn('More popup registration returned no controller.');
                 return null;
             }
+            decorateBookmarkPopupLevel(controller.element, items, null);
             state.morePopup = controller;
             state.moreKey = key;
             log('Registered more popup.', { hiddenCount: hiddenNodes.length });
@@ -2330,14 +2492,25 @@
         });
     }
 
+    function clearBookmarkFolderOpenTimer () {
+        if (state.drag.folderOpenTimer) {
+            clearTimeout(state.drag.folderOpenTimer);
+        }
+        state.drag.folderOpenTimer = null;
+        state.drag.folderOpenId = '';
+        state.drag.folderOpenElement = null;
+    }
+
     function clearBookmarkDropTarget () {
         if (state.drag.targetElement) {
             state.drag.targetElement.classList.remove(
                 BOOKMARK_BAR_CLASSES.dropBefore,
-                BOOKMARK_BAR_CLASSES.dropAfter
+                BOOKMARK_BAR_CLASSES.dropAfter,
+                BOOKMARK_BAR_CLASSES.dropInto
             );
         }
         state.drag.targetId = '';
+        state.drag.targetParentId = '';
         state.drag.targetIndex = -1;
         state.drag.targetElement = null;
         state.drag.position = '';
@@ -2345,6 +2518,7 @@
 
     function clearBookmarkDragState (preserveMoveInFlight) {
         const moveInFlight = Boolean(preserveMoveInFlight && state.drag.moveInFlight);
+        clearBookmarkFolderOpenTimer();
         clearBookmarkDropTarget();
         if (state.drag.sourceElement) {
             state.drag.sourceElement.classList.remove(BOOKMARK_BAR_CLASSES.dragging);
@@ -2352,70 +2526,140 @@
         state.drag.sourceId = '';
         state.drag.sourceParentId = '';
         state.drag.sourceIndex = -1;
+        state.drag.sourceDescendantIds = new Set();
         state.drag.sourceElement = null;
         state.drag.moveInFlight = moveInFlight;
     }
 
-    function getBookmarkDropPosition (element, event) {
+    function scheduleBookmarkFolderOpen (element, node, open) {
+        if (!isFolderNode(node)
+            || state.drag.sourceDescendantIds.has(node.id)
+            || typeof open !== 'function') {
+            clearBookmarkFolderOpenTimer();
+            return;
+        }
+        if (state.drag.folderOpenId === node.id && state.drag.folderOpenElement === element) {
+            return;
+        }
+
+        clearBookmarkFolderOpenTimer();
+        state.drag.folderOpenId = node.id;
+        state.drag.folderOpenElement = element;
+        state.drag.folderOpenTimer = setTimeout(function () {
+            state.drag.folderOpenTimer = null;
+            if (!state.drag.sourceId
+                || state.drag.moveInFlight
+                || state.drag.folderOpenId !== node.id
+                || state.drag.folderOpenElement !== element
+                || !element.isConnected) {
+                return;
+            }
+            open();
+        }, FOLDER_DRAG_OPEN_DELAY);
+    }
+
+    function canDropBookmarkInto (parentId) {
+        return isManualSorting(state.data.sorting)
+            && !state.drag.moveInFlight
+            && Boolean(state.drag.sourceId)
+            && Boolean(parentId)
+            && !state.drag.sourceDescendantIds.has(String(parentId));
+    }
+
+    function setBookmarkDropTarget (element, details) {
+        if (!element
+            || !canDropBookmarkInto(details.parentId)
+            || !Number.isInteger(details.index)
+            || details.index < 0) {
+            clearBookmarkDropTarget();
+            return false;
+        }
+
+        if (state.drag.targetElement !== element
+            || state.drag.targetParentId !== details.parentId
+            || state.drag.targetIndex !== details.index
+            || state.drag.position !== details.position) {
+            clearBookmarkDropTarget();
+            state.drag.targetId = details.targetId || '';
+            state.drag.targetParentId = String(details.parentId);
+            state.drag.targetIndex = details.index;
+            state.drag.targetElement = element;
+            state.drag.position = details.position;
+            element.classList.add(details.position === 'before'
+                ? BOOKMARK_BAR_CLASSES.dropBefore
+                : (details.position === 'after'
+                    ? BOOKMARK_BAR_CLASSES.dropAfter
+                    : BOOKMARK_BAR_CLASSES.dropInto));
+        }
+        return true;
+    }
+
+    function getBookmarkDropPosition (element, event, orientation) {
         const rect = element.getBoundingClientRect();
+        if (orientation === 'vertical') {
+            return event.clientY < rect.top + (rect.height / 2) ? 'before' : 'after';
+        }
+
         const beforePhysicalMidpoint = event.clientX < rect.left + (rect.width / 2);
         const rightToLeft = Boolean(state.row && getComputedStyle(state.row).direction === 'rtl');
         return beforePhysicalMidpoint !== rightToLeft ? 'before' : 'after';
     }
 
-    function updateBookmarkDropTarget (element, node, event) {
-        const valid = isManualSorting(state.data.sorting)
-            && !state.drag.moveInFlight
-            && Boolean(state.drag.sourceId)
-            && state.drag.sourceId !== node.id
-            && state.drag.sourceParentId === node.parentId
-            && Number.isInteger(node.index)
-            && node.index >= 0;
-        if (!valid) {
+    function updateBookmarkNodeDropTarget (element, node, event, orientation) {
+        if (state.drag.sourceId === node.id
+            || !node.parentId
+            || !Number.isInteger(node.index)
+            || node.index < 0) {
             clearBookmarkDropTarget();
             return false;
         }
 
-        const position = getBookmarkDropPosition(element, event);
-        if (state.drag.targetElement !== element || state.drag.position !== position) {
-            clearBookmarkDropTarget();
-            state.drag.targetId = node.id;
-            state.drag.targetIndex = node.index;
-            state.drag.targetElement = element;
-            state.drag.position = position;
-            element.classList.add(position === 'before'
-                ? BOOKMARK_BAR_CLASSES.dropBefore
-                : BOOKMARK_BAR_CLASSES.dropAfter);
-        }
-        return true;
+        const position = getBookmarkDropPosition(element, event, orientation);
+        return setBookmarkDropTarget(element, {
+            targetId: node.id,
+            parentId: node.parentId,
+            index: node.index + (position === 'after' ? 1 : 0),
+            position: position
+        });
     }
 
-    function isBookmarkDropNoOp (sourceIndex, targetIndex, position) {
-        const destinationIndex = targetIndex + (position === 'after' ? 1 : 0);
-        return destinationIndex === sourceIndex || destinationIndex === sourceIndex + 1;
+    function updateBookmarkFolderDropTarget (element, folder, index) {
+        return Boolean(folder) && setBookmarkDropTarget(element, {
+            targetId: folder.id,
+            parentId: folder.id,
+            index: index,
+            position: 'inside'
+        });
+    }
+
+    function isBookmarkDropNoOp (sourceParentId, sourceIndex, targetParentId, targetIndex) {
+        return sourceParentId === targetParentId
+            && (targetIndex === sourceIndex || targetIndex === sourceIndex + 1);
     }
 
     async function moveBookmarkFromDrop () {
         const sourceId = state.drag.sourceId;
-        const parentId = state.drag.sourceParentId;
+        const sourceParentId = state.drag.sourceParentId;
         const sourceIndex = state.drag.sourceIndex;
         const targetId = state.drag.targetId;
+        const targetParentId = state.drag.targetParentId;
         const targetIndex = state.drag.targetIndex;
         const position = state.drag.position;
-        const destinationIndex = targetIndex + (position === 'after' ? 1 : 0);
 
-        if (!sourceId || !parentId || !targetId || !position
+        if (!sourceId || !sourceParentId || !targetParentId || !position
             || !Number.isInteger(sourceIndex) || sourceIndex < 0
-            || !Number.isInteger(targetIndex) || targetIndex < 0) {
+            || !Number.isInteger(targetIndex) || targetIndex < 0
+            || !canDropBookmarkInto(targetParentId)) {
             clearBookmarkDragState(false);
             return;
         }
-        if (isBookmarkDropNoOp(sourceIndex, targetIndex, position)) {
+        if (isBookmarkDropNoOp(sourceParentId, sourceIndex, targetParentId, targetIndex)) {
             clearBookmarkDragState(false);
             return;
         }
 
         state.drag.moveInFlight = true;
+        clearBookmarkFolderOpenTimer();
         clearBookmarkDropTarget();
         if (state.drag.sourceElement) {
             state.drag.sourceElement.classList.remove(BOOKMARK_BAR_CLASSES.dragging);
@@ -2423,78 +2667,108 @@
 
         try {
             await moveBookmark(sourceId, {
-                parentId: parentId,
-                index: destinationIndex
+                parentId: targetParentId,
+                index: targetIndex
             });
-            log('Reordered bookmark from drag.', {
+            log('Moved bookmark from drag.', {
                 sourceId,
-                targetId,
-                parentId,
+                sourceParentId,
                 sourceIndex,
-                destinationIndex,
+                targetId,
+                targetParentId,
+                targetIndex,
                 position
             });
-            scheduleRefresh('bookmark drag reordered', true);
+            scheduleRefresh('bookmark drag moved', true);
         } catch (error) {
-            reportError('Failed to reorder bookmark from drag: ' + sourceId, error);
-            notify('拖拽排序书签失败，请查看控制台。', 'error');
-            scheduleRefresh('bookmark drag reorder failed', true);
+            reportError('Failed to move bookmark from drag: ' + sourceId, error);
+            notify('拖拽移动书签失败，请查看控制台。', 'error');
+            scheduleRefresh('bookmark drag move failed', true);
         } finally {
             clearBookmarkDragState(false);
         }
     }
 
-    function attachBookmarkDragSorting (element, node) {
+    function beginBookmarkDrag (element, node, event) {
+        if (state.drag.moveInFlight
+            || !Number.isInteger(node.index)
+            || node.index < 0
+            || !node.parentId) {
+            event.preventDefault();
+            return false;
+        }
+
+        clearBookmarkDragState(false);
+        state.drag.sourceId = node.id;
+        state.drag.sourceParentId = node.parentId;
+        state.drag.sourceIndex = node.index;
+        state.drag.sourceDescendantIds = getNodeDescendantIds(node);
+        state.drag.sourceElement = element;
+        element.classList.add(BOOKMARK_BAR_CLASSES.dragging);
+
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', node.id);
+        }
+        return true;
+    }
+
+    function attachBookmarkDragSorting (element, node, options) {
         const enabled = isManualSorting(state.data.sorting);
+        const settings = options || {};
+        const orientation = settings.orientation === 'vertical' ? 'vertical' : 'horizontal';
         element.draggable = enabled;
         if (!enabled) {
             return;
         }
 
+        element.dataset.userchromeBookmarkDropTarget = 'true';
+        if (settings.openFolder && isFolderNode(node)) {
+            // The shared menu opens submenus immediately on pointerenter. During a drag,
+            // the delayed opener below owns that transition so users can still sort beside a folder.
+            element.addEventListener('pointerenter', function (event) {
+                if (state.drag.sourceId) {
+                    event.stopImmediatePropagation();
+                }
+            }, true);
+        }
+
         element.addEventListener('dragstart', function (event) {
-            if (state.drag.moveInFlight
-                || !Number.isInteger(node.index)
-                || node.index < 0
-                || !node.parentId) {
-                event.preventDefault();
-                return;
-            }
-
-            clearBookmarkDragState(false);
-            state.drag.sourceId = node.id;
-            state.drag.sourceParentId = node.parentId;
-            state.drag.sourceIndex = node.index;
-            state.drag.sourceElement = element;
-            element.classList.add(BOOKMARK_BAR_CLASSES.dragging);
-
-            if (event.dataTransfer) {
-                event.dataTransfer.effectAllowed = 'move';
-                event.dataTransfer.setData('text/plain', node.id);
-            }
+            beginBookmarkDrag(element, node, event);
         });
 
         element.addEventListener('dragover', function (event) {
-            if (!updateBookmarkDropTarget(element, node, event)) {
+            if (!updateBookmarkNodeDropTarget(element, node, event, orientation)) {
                 if (event.dataTransfer) {
                     event.dataTransfer.dropEffect = 'none';
                 }
+                clearBookmarkFolderOpenTimer();
                 return;
             }
             event.preventDefault();
             if (event.dataTransfer) {
                 event.dataTransfer.dropEffect = 'move';
             }
+            if (settings.openFolder && isFolderNode(node)) {
+                scheduleBookmarkFolderOpen(element, node, settings.openFolder);
+            } else {
+                clearBookmarkFolderOpenTimer();
+            }
         });
 
         element.addEventListener('dragleave', function (event) {
-            if (state.drag.targetElement === element
-                && (!event.relatedTarget || !element.contains(event.relatedTarget))) {
-                clearBookmarkDropTarget();
+            if (!event.relatedTarget || !element.contains(event.relatedTarget)) {
+                if (state.drag.targetElement === element) {
+                    clearBookmarkDropTarget();
+                }
+                if (state.drag.folderOpenElement === element) {
+                    clearBookmarkFolderOpenTimer();
+                }
             }
         });
 
         element.addEventListener('drop', function (event) {
-            if (!updateBookmarkDropTarget(element, node, event)) {
+            if (!updateBookmarkNodeDropTarget(element, node, event, orientation)) {
                 return;
             }
             event.preventDefault();
@@ -2504,6 +2778,51 @@
 
         element.addEventListener('dragend', function () {
             clearBookmarkDragState(state.drag.moveInFlight);
+        });
+    }
+
+    function attachBookmarkBarDropZone (row) {
+        function isToolbarBackgroundEvent (event) {
+            const target = event.target instanceof Element ? event.target : null;
+            return Boolean(target
+                && !target.closest('.' + BOOKMARK_BAR_CLASSES.item)
+                && !target.closest('.' + BOOKMARK_BAR_CLASSES.more));
+        }
+
+        function updateTarget (event) {
+            if (!isToolbarBackgroundEvent(event)) {
+                return false;
+            }
+            const folder = getBookmarkBarFolder();
+            return Boolean(folder)
+                && updateBookmarkFolderDropTarget(row, folder, folder.children.length);
+        }
+
+        row.addEventListener('dragover', function (event) {
+            if (!updateTarget(event)) {
+                return;
+            }
+            event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = 'move';
+            }
+            clearBookmarkFolderOpenTimer();
+        });
+
+        row.addEventListener('dragleave', function (event) {
+            if (state.drag.targetElement === row
+                && (!event.relatedTarget || !row.contains(event.relatedTarget))) {
+                clearBookmarkDropTarget();
+            }
+        });
+
+        row.addEventListener('drop', function (event) {
+            if (!updateTarget(event)) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            void moveBookmarkFromDrop();
         });
     }
 
@@ -2602,7 +2921,13 @@
 
         attachBookmarkContextMenu(button, node);
         attachToolbarKeyboardNavigation(button);
-        attachBookmarkDragSorting(button, node);
+        attachBookmarkDragSorting(button, node, {
+            openFolder: isFolder
+                ? function () {
+                    openFolder(node, button);
+                }
+                : null
+        });
         return button;
     }
 
@@ -3053,6 +3378,7 @@
         });
         attachRowEventBoundary(row);
         attachBookmarkBarContextMenu(row);
+        attachBookmarkBarDropZone(row);
         const items = createElement('div', { class: 'observer' });
         const moreButton = createElement('button', {
             id: MORE_BUTTON_ID,
