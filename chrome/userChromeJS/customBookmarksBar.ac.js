@@ -5,7 +5,7 @@
 // @description:zh-CN 在 Vivaldi 原生书签栏下方增加自绘书签栏
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         20260725.2
+// @version         20260725.3
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods/tree/main/chrome/userChromeJS
 // ==/UserScript==
@@ -52,6 +52,7 @@
     const BOOKMARKS_FOLDER_PREF = 'vivaldi.bookmarks.bar.folder_ids';
     const BOOKMARKS_DISPLAY_PREF = 'vivaldi.bookmarks.bar.display';
     const BOOKMARKS_SORTING_PREF = 'vivaldi.bookmarks.bar.sorting';
+    const BOOKMARKS_OPEN_IN_NEW_TAB_PREF = 'vivaldi.bookmarks.open_in_new_tab';
     const DEFAULT_FOLDER_ID = '1';
     const SORT_ORDER = Object.freeze({
         none: 1,
@@ -2762,10 +2763,13 @@
             || inputEvent.metaKey === true
             || inputEvent.shiftKey === true;
         const activateNewTab = inputEvent.shiftKey === true;
-        const requestedMode = newTabRequested
-            ? (activateNewTab ? 'new-active-tab' : 'new-background-tab')
-            : 'current-tab';
-        const mode = requestedMode === 'new-active-tab' ? 'new-tab' : requestedMode;
+        let mode;
+        if (newTabRequested) {
+            mode = activateNewTab ? 'new-tab' : 'new-background-tab';
+        } else {
+            const openInNewTab = await readPreference(BOOKMARKS_OPEN_IN_NEW_TAB_PREF, false);
+            mode = openInNewTab === true ? 'new-tab' : 'current-tab';
+        }
 
         log('Opening bookmark.', { id: node.id, url: node.url, mode });
         await openNodeInMode(node, mode);

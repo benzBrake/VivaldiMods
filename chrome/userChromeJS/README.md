@@ -184,11 +184,12 @@ element.addEventListener('contextmenu', function (event) {
 
 ### `customBookmarksBar.ac.js` 自绘书签栏
 
-自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids`、`vivaldi.bookmarks.bar.display` 与 `vivaldi.bookmarks.bar.sorting`。样式以 Vivaldi 8.1.4087.48 的 `style/common.css` 为基准，并使用脚本自身的作用域选择器复刻原生书签栏外观：
+自绘书签栏面向 Vivaldi 8.1 的 `.bookmark-bar` DOM，读取 `vivaldi.bookmarks.bar.folder_ids`、`vivaldi.bookmarks.bar.display`、`vivaldi.bookmarks.bar.sorting` 与 `vivaldi.bookmarks.open_in_new_tab`。样式以 Vivaldi 8.1.4087.48 的 `style/common.css` 为基准，并使用脚本自身的作用域选择器复刻原生书签栏外观：
 
 - 保留挂载容器的 `div.observer` class；自绘书签项子树和外置“更多书签”按钮统一使用 `userchrome-custom-bookmarks-bar-*` class，避免进入原生 `bookmarkbarItem` 查询和样式分支
 - 支持 `default`、`text`、`icon`、`iconexceptfolders` 四种原生显示模式；纯文本模式下文件夹显示 10px chevron，图标模式仍保留可访问名称与提示
 - 复刻原生按钮布局、主题背景、hover/active/focus、图标、标题截断、分隔线和 Break Mode 状态；`#userchrome-custom-bookmarks-bar` 与 `#userchrome-custom-bookmarks-more` 保持稳定
+- 普通左键打开网址书签时跟随 `vivaldi.bookmarks.open_in_new_tab` 选择当前标签或前台新标签；中键、修饰键和右键菜单的显式打开方式保持独立
 - 网址书签和文件夹支持当前标签、新标签、后台标签、新窗口及隐身窗口打开
 - 文件夹支持添加当前标签页、新建书签、新建文件夹、新增分隔线和粘贴
 - 书签栏空白区域提供原生顺序的新增、排序和粘贴菜单；鼠标打开时不预高亮首项，移出项目后不残留高亮，键盘操作仍保留焦点反馈；排序支持手动、标题、地址、昵称、描述、创建日期及升降序，作用于当前书签栏根文件夹
