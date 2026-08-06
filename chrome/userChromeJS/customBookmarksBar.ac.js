@@ -17,6 +17,7 @@
     const STYLE_ID = 'userchrome-custom-bookmarks-bar-style';
     const BAR_SELECTOR = '.bookmark-bar';
     const MOUNT_CLASS = 'userchrome-custom-bookmarks-mounted';
+    const NATIVE_VISIBLE_CLASS = 'userchrome-custom-bookmarks-native-visible';
     const ROW_ID = 'userchrome-custom-bookmarks-bar';
     const ROW_LABEL = '自绘书签栏';
     const ROW_EVENT_BOUNDARY_TYPES = [
@@ -53,6 +54,13 @@
     const BOOKMARKS_DISPLAY_PREF = 'vivaldi.bookmarks.bar.display';
     const BOOKMARKS_SORTING_PREF = 'vivaldi.bookmarks.bar.sorting';
     const BOOKMARKS_OPEN_IN_NEW_TAB_PREF = 'vivaldi.bookmarks.open_in_new_tab';
+    const CUSTOM_SETTINGS_KEY = 'USERCHROME_CUSTOM_BOOKMARKS_BAR_SETTINGS';
+    const CUSTOM_SETTINGS_VERSION = 1;
+    const DEFAULT_CUSTOM_SETTINGS = Object.freeze({
+        rowHeight: 28,
+        itemMaxWidth: 120,
+        nativeVisible: false
+    });
     const DEFAULT_FOLDER_ID = '1';
     const SORT_ORDER = Object.freeze({
         none: 1,
@@ -75,7 +83,6 @@
     const CONTEXT_MENU_CLASS = 'userchrome-bookmark-context-menu';
     const BOOKMARK_BAR_CONTEXT_MENU_CLASS = 'userchrome-bookmark-bar-context-menu';
     const BOOKMARK_BAR_CONTEXT_MENU_PENDING_CLASS = 'userchrome-bookmark-bar-context-menu-pending';
-    const DIALOG_ID = 'userchrome-bookmark-dialog';
     const BOOKMARK_BAR_CLASSES = Object.freeze({
         item: 'userchrome-custom-bookmarks-bar-item',
         folder: 'userchrome-custom-bookmarks-bar-folder',
@@ -158,11 +165,12 @@
         folderPopups: new Map(),
         morePopup: null,
         activePopupController: null,
-        dialog: null,
+        settings: { ...DEFAULT_CUSTOM_SETTINGS },
         bookmarkClipboard: null,
         clipboardStorageListener: null,
         bookmarkListeners: [],
         prefListener: null,
+        customSettingsStorageListener: null,
         runtimeListenersAttached: false,
         importing: false
     };
@@ -217,6 +225,14 @@
             .bookmark-bar[role="toolbar"] > div.observer {
                 display: none !important;
             }
+
+            .bookmark-bar[role="toolbar"].${NATIVE_VISIBLE_CLASS} > div.observer {
+                display: flex !important;
+                flex: 0 0 var(--userchrome-bookmark-row-height, 28px) !important;
+                width: 100% !important;
+                height: var(--userchrome-bookmark-row-height, 28px) !important;
+                min-height: var(--userchrome-bookmark-row-height, 28px) !important;
+            }
             .${MOUNT_CLASS} {
                 display: flex !important;
                 flex-direction: column !important;
@@ -232,7 +248,7 @@
             }
 
             #${ROW_ID} {
-                --userchrome-bookmark-row-height: 28px;
+                --userchrome-bookmark-item-max-width: 120px;
                 display: flex;
                 flex: 0 0 var(--userchrome-bookmark-row-height);
                 align-items: stretch;
@@ -254,7 +270,7 @@
                 align-items: center;
                 flex: 0 0 auto;
                 gap: 6px;
-                max-width: 120px;
+                max-width: var(--userchrome-bookmark-item-max-width);
                 box-sizing: border-box;
                 padding: 0 6px 0 0;
                 margin-left: 0;
@@ -292,7 +308,7 @@
             }
 
             #${ROW_ID} .${BOOKMARK_BAR_CLASSES.separator} {
-                height: 28px;
+                height: var(--userchrome-bookmark-row-height);
                 border-left: 1px solid var(--colorBorder);
             }
 
@@ -384,7 +400,7 @@
             #${ROW_ID} > .observer > .${BOOKMARK_BAR_CLASSES.item}::before {
                 content: '';
                 width: 0;
-                height: 28px;
+                height: var(--userchrome-bookmark-row-height);
                 flex: 0 0 auto;
                 background-color: transparent;
                 position: relative;
@@ -577,69 +593,54 @@
                 border-bottom-color: color-mix(in srgb, var(--colorBorder, rgba(0, 0, 0, 0.16)) 78%, transparent);
             }
 
-            #${DIALOG_ID} {
-                position: fixed;
-                inset: 0;
-                z-index: 2147483647;
-                width: min(480px, calc(100vw - 32px));
-                max-width: 480px;
-                padding: 0;
-                overflow: hidden;
-                border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
-                border-radius: 12px;
-                background: var(--colorBg, #fff);
-                color: var(--colorFg, #222);
-                box-shadow: 0 22px 64px rgba(0, 0, 0, 0.34);
-                font: inherit;
-            }
-
-            #${DIALOG_ID}::backdrop {
-                background: rgba(0, 0, 0, 0.38);
-                backdrop-filter: blur(2px);
-            }
-
-            #${DIALOG_ID} .userchrome-bookmark-dialog-form {
-                display: flex;
-                flex-direction: column;
-                max-height: min(680px, calc(100vh - 40px));
-            }
-
-            #${DIALOG_ID} .userchrome-bookmark-dialog-header {
-                padding: 20px 22px 12px;
-            }
-
-            #${DIALOG_ID} .userchrome-bookmark-dialog-title {
-                margin: 0;
-                font-size: 18px;
-                font-weight: 600;
-                line-height: 1.3;
-            }
-
-            #${DIALOG_ID} .userchrome-bookmark-dialog-message {
-                margin: 8px 0 0;
-                color: var(--colorFgFaded, rgba(34, 34, 34, 0.68));
-                font-size: 13px;
-                line-height: 1.5;
-            }
-
-            #${DIALOG_ID} .userchrome-bookmark-dialog-fields {
+            #userchrome-modal .userchrome-bookmark-dialog-fields {
                 display: grid;
                 gap: 14px;
-                padding: 8px 22px 20px;
-                overflow: auto;
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-field {
+            #userchrome-modal .userchrome-bookmark-dialog-field {
                 display: grid;
                 gap: 6px;
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-label {
+            #userchrome-modal .userchrome-bookmark-dialog-checkbox {
+                display: flex;
+                grid-template-columns: none;
+                align-items: center;
+                gap: 10px;
+                min-height: 36px;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            #userchrome-modal .userchrome-bookmark-dialog-checkbox .userchrome-bookmark-dialog-label {
+                order: 1;
+            }
+
+            #userchrome-modal .userchrome-bookmark-dialog-checkbox-control {
+                order: 0;
+                flex: 0 0 auto;
+                width: auto;
+                min-width: 0;
+                height: auto;
+                min-height: 0;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                border-radius: 0;
+                appearance: auto;
+                -webkit-appearance: auto;
+                cursor: pointer;
+                pointer-events: auto !important;
+                user-select: none;
+            }
+
+            #userchrome-modal .userchrome-bookmark-dialog-label {
                 font-size: 13px;
                 font-weight: 500;
             }
 
-            #${DIALOG_ID} :is(input, select) {
+            #userchrome-modal .userchrome-bookmark-dialog-fields :is(input:not([type="checkbox"]), select) {
                 width: 100%;
                 min-height: 36px;
                 box-sizing: border-box;
@@ -652,44 +653,43 @@
                 font: inherit;
             }
 
-            #${DIALOG_ID} :is(input, select):focus {
+            #userchrome-modal .userchrome-bookmark-dialog-fields :is(input:not([type="checkbox"]), select):focus {
                 border-color: var(--colorAccentBg, #006dcc);
                 box-shadow: 0 0 0 2px color-mix(in srgb, var(--colorAccentBg, #006dcc) 28%, transparent);
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-error {
-                min-height: 18px;
-                margin: -4px 22px 0;
-                color: var(--colorErrorBg, #c42b1c);
-                font-size: 12px;
-                line-height: 1.4;
+            #userchrome-modal .userchrome-modal-content {
+                position: relative;
+                scrollbar-width: thin;
+                scrollbar-color: var(--colorBorder, rgba(0, 0, 0, 0.35)) transparent;
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-actions {
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-                padding: 14px 22px 18px;
-                border-top: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.14));
-                background: var(--colorBgAlphaHeavy, var(--colorBg, #fff));
+            #userchrome-modal .userchrome-modal-content::-webkit-scrollbar {
+                width: 8px;
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-actions button {
-                min-width: 78px;
-                min-height: 34px;
-                padding: 6px 14px;
-                border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
-                border-radius: 6px;
-                background: var(--colorBgIntense, var(--colorBg, #fff));
-                color: var(--colorFg, #222);
-                font: inherit;
-                cursor: pointer;
+            #userchrome-modal .userchrome-modal-content::-webkit-scrollbar-track {
+                background: transparent;
             }
 
-            #${DIALOG_ID} .userchrome-bookmark-dialog-actions .primary {
-                border-color: var(--colorAccentBg, #006dcc);
-                background: var(--colorAccentBg, #006dcc);
-                color: var(--colorAccentFg, #fff);
+            #userchrome-modal .userchrome-modal-content::-webkit-scrollbar-thumb {
+                border: 2px solid transparent;
+                border-radius: 999px;
+                background-clip: padding-box;
+                background-color: var(--colorBorder, rgba(0, 0, 0, 0.35));
+            }
+
+            #userchrome-modal .userchrome-modal-content::after {
+                content: '';
+                position: sticky;
+                z-index: 1;
+                display: block;
+                right: 0;
+                bottom: -20px;
+                height: 18px;
+                margin: 0 -20px -20px;
+                pointer-events: none;
+                background: linear-gradient(to bottom, transparent, var(--colorBg, #fff) 78%);
             }
 
             `
@@ -730,6 +730,141 @@
         }
         await prefs.set({ path, value });
         log('Wrote preference.', { path, value });
+    }
+
+    function normalizeCustomSettings (value) {
+        const source = value && typeof value === 'object' ? value : {};
+        const rowHeight = Number(source.rowHeight);
+        const itemMaxWidth = Number(source.itemMaxWidth);
+        return {
+            rowHeight: Number.isFinite(rowHeight)
+                ? Math.min(48, Math.max(22, Math.round(rowHeight)))
+                : DEFAULT_CUSTOM_SETTINGS.rowHeight,
+            itemMaxWidth: Number.isFinite(itemMaxWidth)
+                ? Math.min(360, Math.max(60, Math.round(itemMaxWidth)))
+                : DEFAULT_CUSTOM_SETTINGS.itemMaxWidth,
+            nativeVisible: source.nativeVisible === true
+        };
+    }
+
+    function getCustomSettingsStorage () {
+        const storage = window.chrome && window.chrome.storage;
+        return storage && storage.local
+            && typeof storage.local.get === 'function'
+            && typeof storage.local.set === 'function'
+            ? storage.local
+            : null;
+    }
+
+    async function readCustomSettings () {
+        const storage = getCustomSettingsStorage();
+        if (!storage) {
+            warn('chrome.storage.local is unavailable; using default bookmark bar settings.');
+            return { ...DEFAULT_CUSTOM_SETTINGS };
+        }
+        try {
+            const result = await new Promise(function (resolve, reject) {
+                let settled = false;
+                const finish = function (callback, value) {
+                    if (settled) return;
+                    settled = true;
+                    callback(value);
+                };
+                const callback = function (value) {
+                    const lastError = getBookmarkError();
+                    if (lastError) {
+                        finish(reject, new Error(lastError.message || String(lastError)));
+                    } else {
+                        finish(resolve, value || {});
+                    }
+                };
+                try {
+                    const pending = storage.get([CUSTOM_SETTINGS_KEY], callback);
+                    if (pending && typeof pending.then === 'function') {
+                        pending.then(function (value) { finish(resolve, value || {}); }).catch(function (error) { finish(reject, error); });
+                    }
+                } catch (callbackError) {
+                    try {
+                        const pending = storage.get([CUSTOM_SETTINGS_KEY]);
+                        if (pending && typeof pending.then === 'function') {
+                            pending.then(function (value) { finish(resolve, value || {}); }).catch(function (error) { finish(reject, error); });
+                        } else {
+                            finish(reject, callbackError);
+                        }
+                    } catch (error) {
+                        finish(reject, error);
+                    }
+                }
+            });
+            const payload = result && result[CUSTOM_SETTINGS_KEY];
+            if (!payload || payload.version !== CUSTOM_SETTINGS_VERSION) {
+                return { ...DEFAULT_CUSTOM_SETTINGS };
+            }
+            return normalizeCustomSettings(payload);
+        } catch (error) {
+            reportError('Failed to read custom bookmark bar settings.', error);
+            return { ...DEFAULT_CUSTOM_SETTINGS };
+        }
+    }
+
+    async function writeCustomSettings (settings) {
+        const storage = getCustomSettingsStorage();
+        if (!storage) {
+            throw new Error('chrome.storage.local is unavailable.');
+        }
+        const normalized = normalizeCustomSettings(settings);
+        await new Promise(function (resolve, reject) {
+            let settled = false;
+            const finish = function (callback, value) {
+                if (settled) return;
+                settled = true;
+                callback(value);
+            };
+            const callback = function () {
+                const lastError = getBookmarkError();
+                if (lastError) finish(reject, new Error(lastError.message || String(lastError)));
+                else finish(resolve);
+            };
+            try {
+                const pending = storage.set({
+                    [CUSTOM_SETTINGS_KEY]: {
+                        version: CUSTOM_SETTINGS_VERSION,
+                        ...normalized
+                    }
+                }, callback);
+                if (pending && typeof pending.then === 'function') {
+                    pending.then(function () { finish(resolve); }).catch(function (error) { finish(reject, error); });
+                }
+            } catch (callbackError) {
+                try {
+                    const pending = storage.set({
+                        [CUSTOM_SETTINGS_KEY]: {
+                            version: CUSTOM_SETTINGS_VERSION,
+                            ...normalized
+                        }
+                    });
+                    if (pending && typeof pending.then === 'function') {
+                        pending.then(function () { finish(resolve); }).catch(function (error) { finish(reject, error); });
+                    } else {
+                        finish(reject, callbackError);
+                    }
+                } catch (error) {
+                    finish(reject, error);
+                }
+            }
+        });
+        state.settings = normalized;
+    }
+
+    function applyCustomSettings () {
+        if (state.host) {
+            state.host.classList.toggle(NATIVE_VISIBLE_CLASS, state.settings.nativeVisible);
+            state.host.style.setProperty('--userchrome-bookmark-row-height', state.settings.rowHeight + 'px');
+        }
+        if (state.row) {
+            state.row.style.setProperty('--userchrome-bookmark-item-max-width', state.settings.itemMaxWidth + 'px');
+            requestAnimationFrame(layoutMore);
+        }
     }
 
     function normalizeFolderIds (value) {
@@ -1014,11 +1149,10 @@
     }
 
     function createDialogField (field) {
-        const wrapper = createElement('label', { class: 'userchrome-bookmark-dialog-field' });
-        wrapper.appendChild(createElement('span', {
-            class: 'userchrome-bookmark-dialog-label',
-            innerText: field.label
-        }));
+        const wrapper = createElement('label', {
+            class: 'userchrome-bookmark-dialog-field'
+                + (field.type === 'checkbox' ? ' userchrome-bookmark-dialog-checkbox' : '')
+        });
 
         let control;
         if (field.type === 'select') {
@@ -1035,10 +1169,15 @@
             control = createElement('input', {
                 name: field.name,
                 type: field.type || 'text',
-                value: field.value || '',
+                class: field.type === 'checkbox' ? 'userchrome-bookmark-dialog-checkbox-control' : '',
                 autocomplete: 'off',
                 spellcheck: 'false'
             });
+            if (field.type === 'checkbox') {
+                control.checked = field.checked === true;
+            } else {
+                control.value = field.value || '';
+            }
             if (field.placeholder) {
                 control.placeholder = field.placeholder;
             }
@@ -1046,136 +1185,64 @@
         if (field.required) {
             control.required = true;
         }
-        wrapper.appendChild(control);
+        const controlId = 'userchrome-modal-field-' + String(field.name || 'field').replace(/[^a-zA-Z0-9_-]/g, '_');
+        control.id = controlId;
+        wrapper.setAttribute('for', controlId);
+        if (typeof field.min !== 'undefined') {
+            control.min = String(field.min);
+        }
+        if (typeof field.max !== 'undefined') {
+            control.max = String(field.max);
+        }
+        if (typeof field.step !== 'undefined') {
+            control.step = String(field.step);
+        }
+        const label = createElement('span', {
+            class: 'userchrome-bookmark-dialog-label',
+            innerText: field.label
+        });
+        if (field.type === 'checkbox') {
+            wrapper.appendChild(control);
+            wrapper.appendChild(label);
+        } else {
+            wrapper.appendChild(label);
+            wrapper.appendChild(control);
+        }
         return wrapper;
     }
 
-    function ensureDialog () {
-        if (state.dialog && state.dialog.isConnected) {
-            return state.dialog;
-        }
-        const existing = document.getElementById(DIALOG_ID);
-        if (existing) {
-            existing.remove();
-        }
-        state.dialog = createElement('dialog', { id: DIALOG_ID });
-        document.body.appendChild(state.dialog);
-        return state.dialog;
-    }
-
     function showDialog (options) {
-        const dialog = ensureDialog();
-        if (dialog.open) {
-            dialog.close('replace');
+        const modal = window.userChrome_js && window.userChrome_js.modal;
+        if (!modal || typeof modal.open !== 'function') {
+            notify('全局 Modal API 尚未加载。', 'error');
+            return null;
         }
-
-        return new Promise(function (resolve) {
-            const form = createElement('form', {
-                class: 'userchrome-bookmark-dialog-form',
-                method: 'dialog'
-            });
-            const header = createElement('header', { class: 'userchrome-bookmark-dialog-header' });
-            header.appendChild(createElement('h2', {
-                class: 'userchrome-bookmark-dialog-title',
-                innerText: options.title
-            }));
-            if (options.message) {
-                header.appendChild(createElement('p', {
-                    class: 'userchrome-bookmark-dialog-message',
-                    innerText: options.message
-                }));
-            }
-            form.appendChild(header);
-
-            const configuredFields = options.fields || [];
-            let error = null;
-            if (configuredFields.length) {
-                const fields = createElement('div', { class: 'userchrome-bookmark-dialog-fields' });
-                configuredFields.forEach(function (field) {
-                    fields.appendChild(createDialogField(field));
-                });
-                form.appendChild(fields);
-
-                error = createElement('div', {
-                    class: 'userchrome-bookmark-dialog-error',
-                    role: 'alert'
-                });
-                form.appendChild(error);
-            }
-
-            const actions = createElement('footer', { class: 'userchrome-bookmark-dialog-actions' });
-            const cancel = createElement('button', {
-                type: 'button',
-                innerText: '取消'
-            });
-            const submit = createElement('button', {
-                type: 'submit',
-                class: 'primary',
-                innerText: options.submitLabel || '保存'
-            });
-            if (options.danger) {
-                submit.style.background = 'var(--colorErrorBg, #c42b1c)';
-                submit.style.borderColor = 'var(--colorErrorBg, #c42b1c)';
-                submit.style.color = 'var(--colorErrorFg, #fff)';
-            }
-            actions.appendChild(cancel);
-            actions.appendChild(submit);
-            form.appendChild(actions);
-            dialog.replaceChildren(form);
-
-            let settled = false;
-            function finish (value) {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                dialog.removeEventListener('cancel', onCancel);
-                dialog.removeEventListener('close', onClose);
-                resolve(value);
-            }
-            function onCancel (event) {
-                event.preventDefault();
-                dialog.close('cancel');
-            }
-            function onClose () {
-                finish(null);
-            }
-
-            cancel.addEventListener('click', function () {
-                dialog.close('cancel');
-            });
-            dialog.addEventListener('cancel', onCancel);
-            dialog.addEventListener('close', onClose);
-            form.addEventListener('submit', function (event) {
-                event.preventDefault();
+        const content = createElement('div', { class: 'userchrome-bookmark-dialog-fields' });
+        (options.fields || []).forEach(function (field) {
+            content.appendChild(createDialogField(field));
+        });
+        return modal.open({
+            title: options.title,
+            message: options.message,
+            content,
+            confirmLabel: options.submitLabel || '保存',
+            cancelLabel: '取消',
+            danger: options.danger,
+            restoreFocus: options.restoreFocus,
+            validate: function (formData) {
                 const data = {};
-                configuredFields.forEach(function (field) {
-                    const control = form.elements.namedItem(field.name);
-                    data[field.name] = control ? String(control.value || '').trim() : '';
+                (options.fields || []).forEach(function (field) {
+                    data[field.name] = String(formData.get(field.name) || '').trim();
                 });
-                const validationMessage = typeof options.validate === 'function'
-                    ? options.validate(data)
-                    : '';
-                if (validationMessage) {
-                    if (error) {
-                        error.innerText = validationMessage;
-                    }
-                    return;
-                }
-                finish(data);
-                dialog.close('submit');
-            });
-
-            dialog.showModal();
-            const firstControl = form.querySelector('input, select, button');
-            if (firstControl) {
-                requestAnimationFrame(function () {
-                    firstControl.focus();
-                    if (typeof firstControl.select === 'function') {
-                        firstControl.select();
-                    }
-                });
+                return typeof options.validate === 'function' ? options.validate(data) : '';
             }
+        }).then(function (formData) {
+            if (!formData) return null;
+            const data = {};
+            (options.fields || []).forEach(function (field) {
+                data[field.name] = String(formData.get(field.name) || '').trim();
+            });
+            return data;
         });
     }
 
@@ -2007,9 +2074,97 @@
                 onSelect: function () {
                     return pasteIntoFolder(folder);
                 }
+            },
+            { type: 'separator' },
+            {
+                id: 'settings',
+                label: '设置(&T)',
+                onSelect: openBookmarkBarSettings
             }
         );
         return items;
+    }
+
+    async function openBookmarkBarSettings () {
+        const modal = window.userChrome_js && window.userChrome_js.modal;
+        if (!modal || typeof modal.open !== 'function') {
+            notify('全局 Modal API 尚未加载。', 'error');
+            return;
+        }
+        const displayMode = normalizeDisplayMode(await readPreference(BOOKMARKS_DISPLAY_PREF, state.data.displayMode));
+        const openInNewTab = await readPreference(BOOKMARKS_OPEN_IN_NEW_TAB_PREF, false);
+        const content = createElement('div', { class: 'userchrome-bookmark-dialog-fields' });
+        content.appendChild(createDialogField({
+            name: 'rowHeight', label: '行高（px）', type: 'number', value: state.settings.rowHeight,
+            min: 22, max: 48, step: 1, required: true
+        }));
+        content.appendChild(createDialogField({
+            name: 'itemMaxWidth', label: '项目最大宽度（px）', type: 'number', value: state.settings.itemMaxWidth,
+            min: 60, max: 360, step: 1, required: true
+        }));
+        content.appendChild(createDialogField({
+            name: 'nativeVisible',
+            label: '显示原生书签工具栏',
+            type: 'checkbox',
+            checked: state.settings.nativeVisible
+        }));
+        content.appendChild(createDialogField({
+            name: 'displayMode', label: '显示模式', type: 'select', value: displayMode,
+            options: [
+                { value: 'default', label: '默认（图标与标题）' },
+                { value: 'text', label: '仅文本' },
+                { value: 'icon', label: '仅图标' },
+                { value: 'iconexceptfolders', label: '图标（文件夹显示标题）' }
+            ]
+        }));
+        content.appendChild(createDialogField({
+            name: 'openInNewTab', label: '普通左键打开方式', type: 'select', value: openInNewTab === true ? 'new-tab' : 'current-tab',
+            options: [
+                { value: 'current-tab', label: '当前标签页' },
+                { value: 'new-tab', label: '前台新标签页' }
+            ]
+        }));
+        const restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const formData = await modal.open({
+            title: '自绘书签栏设置',
+            message: '设置会立即应用，并在当前用户配置中保存。',
+            content,
+            confirmLabel: '确定',
+            cancelLabel: '取消',
+            defaultSize: { width: 480, height: 520 },
+            resizable: true,
+            backdropBlur: 2,
+            restoreFocus,
+            validate: function (data) {
+                const rowHeight = Number(data.get('rowHeight'));
+                const itemMaxWidth = Number(data.get('itemMaxWidth'));
+                if (!Number.isInteger(rowHeight) || rowHeight < 22 || rowHeight > 48) {
+                    return '行高必须是 22–48 之间的整数。';
+                }
+                if (!Number.isInteger(itemMaxWidth) || itemMaxWidth < 60 || itemMaxWidth > 360) {
+                    return '项目最大宽度必须是 60–360 之间的整数。';
+                }
+                return '';
+            }
+        });
+        if (!formData) return;
+        const nextSettings = normalizeCustomSettings({
+            rowHeight: Number(formData.get('rowHeight')),
+            itemMaxWidth: Number(formData.get('itemMaxWidth')),
+            nativeVisible: formData.get('nativeVisible') === 'on'
+        });
+        try {
+            await writeCustomSettings(nextSettings);
+            await writePreference(BOOKMARKS_DISPLAY_PREF, normalizeDisplayMode(formData.get('displayMode')));
+            await writePreference(BOOKMARKS_OPEN_IN_NEW_TAB_PREF, formData.get('openInNewTab') === 'new-tab');
+            state.settings = nextSettings;
+            applyCustomSettings();
+            scheduleRefresh('custom bookmark settings changed', true);
+            notify('自绘书签栏设置已保存。', 'success');
+        } catch (error) {
+            reportError('Failed to save custom bookmark bar settings.', error);
+            notify('保存自绘书签栏设置失败，请查看控制台。', 'error');
+        }
     }
 
     function createOpenContextItems (node) {
@@ -3330,6 +3485,8 @@
         }
         if (state.host) {
             state.host.classList.remove(MOUNT_CLASS);
+            state.host.classList.remove(NATIVE_VISIBLE_CLASS);
+            state.host.style.removeProperty('--userchrome-bookmark-row-height');
         }
 
         state.host = null;
@@ -3339,9 +3496,6 @@
         state.emptyState = null;
         state.buttons = [];
         state.hiddenNodes = [];
-        if (state.dialog && state.dialog.open) {
-            state.dialog.close('bookmarks-unmount');
-        }
         log('Unmounted custom bookmark bar.', { reason });
     }
 
@@ -3376,6 +3530,8 @@
             role: 'toolbar',
             'aria-label': ROW_LABEL
         });
+        host.style.setProperty('--userchrome-bookmark-row-height', state.settings.rowHeight + 'px');
+        row.style.setProperty('--userchrome-bookmark-item-max-width', state.settings.itemMaxWidth + 'px');
         attachRowEventBoundary(row);
         attachBookmarkBarContextMenu(row);
         attachBookmarkBarDropZone(row);
@@ -3410,6 +3566,7 @@
         }
 
         state.host = host;
+        host.classList.toggle(NATIVE_VISIBLE_CLASS, state.settings.nativeVisible);
         state.row = row;
         state.items = items;
         state.moreButton = moreButton;
@@ -3553,6 +3710,16 @@
             };
             storageChanged.addListener(state.clipboardStorageListener);
             log('Attached bookmark clipboard storage listener.');
+
+            state.customSettingsStorageListener = function (changes, areaName) {
+                if (areaName !== 'local' || !changes || !changes[CUSTOM_SETTINGS_KEY]) {
+                    return;
+                }
+                state.settings = normalizeCustomSettings(changes[CUSTOM_SETTINGS_KEY].newValue);
+                applyCustomSettings();
+                log('Custom bookmark bar settings changed in another window.');
+            };
+            storageChanged.addListener(state.customSettingsStorageListener);
         } else {
             warn('chrome.storage.onChanged is unavailable; bookmark clipboard is window-local.');
         }
@@ -3616,7 +3783,8 @@
                     : first && first.path;
                 if (path === BOOKMARKS_FOLDER_PREF
                     || path === BOOKMARKS_DISPLAY_PREF
-                    || path === BOOKMARKS_SORTING_PREF) {
+                    || path === BOOKMARKS_SORTING_PREF
+                    || path === BOOKMARKS_OPEN_IN_NEW_TAB_PREF) {
                     log('Bookmark preference changed.', { path, args });
                     scheduleRefresh('bookmark preference changed', true);
                 }
@@ -3669,6 +3837,7 @@
         });
         ensureStyle();
         attachRuntimeListeners();
+        state.settings = await readCustomSettings();
         await loadBookmarkClipboard();
         scheduleMount('initial');
 

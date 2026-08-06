@@ -9,7 +9,7 @@
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供可跨层级拖放的文件夹 Popupset、溢出菜单及带助记键的项目/空白区域右键操作 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供可跨层级拖放的文件夹 Popupset、溢出菜单、设置弹窗及带助记键的项目/空白区域右键操作 |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -90,6 +90,34 @@ userChrome_js.alert('点击打开 Mod 管理器', {
     }
 });
 ```
+
+### `window.userChrome_js.modal`
+
+全局单例 modal，用于 Vivaldi 内置界面的表单和确认操作。调用 `modal.open(options)` 返回 `Promise<FormData|null>`：点击确定返回原生 `FormData`，点击取消、标题栏关闭、遮罩、按 `Escape` 或被新的 modal 替换时返回 `null`。`modal.close(reason?)` 主动关闭当前实例。
+
+```js
+const content = userChrome_js.createElement('div');
+content.appendChild(userChrome_js.createElement('input', {
+    name: 'value',
+    required: true
+}));
+
+const result = await userChrome_js.modal.open({
+    title: '示例设置',
+    content,
+    defaultSize: { width: 480, height: 320 },
+    resizable: false,
+    backdropBlur: 2,
+    validate(formData) {
+        return formData.get('value') ? '' : '值不能为空。';
+    }
+});
+if (result) {
+    console.log(result.get('value'));
+}
+```
+
+支持 `title`、`message`、`content`（必须是 `HTMLElement`）、`confirmLabel`、`cancelLabel`、`showClose`、`danger`、`defaultSize.width/height`、`resizable`、`backdropBlur`、`restoreFocus` 和异步 `validate(formData, form)`。默认尺寸为宽度 `480px`、高度自动；默认不可调整大小，背景模糊 `2px`，显示关闭按钮。
 
 ### `window.userChrome_js.menu`
 
@@ -192,7 +220,9 @@ element.addEventListener('contextmenu', function (event) {
 - 普通左键打开网址书签时跟随 `vivaldi.bookmarks.open_in_new_tab` 选择当前标签或前台新标签；中键、修饰键和右键菜单的显式打开方式保持独立
 - 网址书签和文件夹支持当前标签、新标签、后台标签、新窗口及隐身窗口打开
 - 文件夹支持添加当前标签页、新建书签、新建文件夹、新增分隔线和粘贴
-- 书签栏空白区域提供原生顺序的新增、排序和粘贴菜单；鼠标打开时不预高亮首项，移出项目后不残留高亮，键盘操作仍保留焦点反馈；排序支持手动、标题、地址、昵称、描述、创建日期及升降序，作用于当前书签栏根文件夹
+- 书签栏空白区域提供原生顺序的新增、排序、粘贴和底部“设置”菜单；设置可调整 22–48px 行高、60–360px 项目最大宽度、原生书签工具栏显示状态、四种显示模式及普通左键打开方式，并立即应用
+- 原生书签工具栏开关只切换脚本注入的 `.bookmark-bar[role="toolbar"] > div.observer` 隐藏规则，不修改 Vivaldi 的 `vivaldi.bookmarks.bar.visible` 偏好；显示时强制 observer 使用当前书签栏行高，避免 Vivaldi 动态容器折叠为零高度
+- 设置采用混合持久化：显示模式和普通左键打开方式同步写入 Vivaldi 原生偏好，行高、项目最大宽度和原生工具栏显示状态写入版本化 `chrome.storage.local`；跨窗口变更会自动刷新
 - 排序沿用 `vivaldi.bookmarks.bar.sorting` 的展示语义，不改写书签顺序；非手动排序时隐藏分隔线及“新增分隔线”操作
 - 手动排序时可在工具栏、更多书签菜单和任意层级文件夹 Popupset 中拖拽书签、文件夹及分隔线；支持弹层内纵向排序、跨文件夹移动及从文件夹移回工具栏，并通过 `chrome.bookmarks.move` 持久化目标父目录与插入位置
 - 将拖拽项目停留在工具栏或弹层中的文件夹上 650ms 会自动展开对应菜单，可继续进入新目录并在任意项目之前或之后放置；空文件夹、弹层起止区域和工具栏空白处也可接收放置，同时阻止文件夹移入自身或其后代目录

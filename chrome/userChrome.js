@@ -3,9 +3,10 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.5
+// @version         0.2.6
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260806 增加全局 modal API
 // @note            20260725 修复长菜单分隔线收缩并统一使用 border-bottom 绘制
 // @note            20260724 菜单标签增加 Windows 风格助记键语法和按键分发
 // @note            20260724 收紧菜单项间距并禁止菜单横向滚动
@@ -38,6 +39,8 @@
     const MENU_STYLE_ID = 'userchrome-menu-style';
     const MENU_ROOT_ID = 'userchrome-menu-root';
     const MENU_VIEWPORT_MARGIN = 8;
+    const MODAL_STYLE_ID = 'userchrome-modal-style';
+    const MODAL_ID = 'userchrome-modal';
     const delegatedEventListeners = new WeakMap();
 
     function addDelegatedEventListener(element, event, selector, handler, listener) {
@@ -1767,6 +1770,327 @@
         };
     }
 
+    function normalizeModalDimension(value, fallback, minimum) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return Math.max(minimum, Math.round(value)) + 'px';
+        }
+        if (typeof value === 'string' && /^(?:\d+(?:\.\d+)?px|\d+(?:\.\d+)?(?:vw|vh)|min\([^;{}]+\)|calc\([^;{}]+\))$/.test(value.trim())) {
+            return value.trim();
+        }
+        return fallback;
+    }
+
+    function normalizeModalOptions(options) {
+        const source = options && typeof options === 'object' ? options : {};
+        const defaultSize = source.defaultSize && typeof source.defaultSize === 'object'
+            ? source.defaultSize
+            : {};
+        const className = typeof source.className === 'string'
+            ? source.className.split(/\s+/).filter((value) => /^[a-zA-Z0-9_-]+$/.test(value)).join(' ')
+            : '';
+        return {
+            title: typeof source.title === 'string' ? source.title : '',
+            message: typeof source.message === 'string' ? source.message : '',
+            content: source.content instanceof HTMLElement ? source.content : null,
+            confirmLabel: typeof source.confirmLabel === 'string' && source.confirmLabel ? source.confirmLabel : '确定',
+            cancelLabel: typeof source.cancelLabel === 'string' && source.cancelLabel ? source.cancelLabel : '取消',
+            showClose: source.showClose !== false,
+            danger: source.danger === true,
+            className,
+            width: normalizeModalDimension(defaultSize.width, 'min(480px, calc(100vw - 32px))', 240),
+            height: normalizeModalDimension(defaultSize.height, 'auto', 160),
+            resizable: source.resizable === true,
+            backdropBlur: Number.isFinite(source.backdropBlur) ? Math.max(0, source.backdropBlur) : 2,
+            restoreFocus: source.restoreFocus instanceof HTMLElement ? source.restoreFocus : null,
+            validate: typeof source.validate === 'function' ? source.validate : null
+        };
+    }
+
+    function createModalApi() {
+        const state = {
+            dialog: null,
+            active: null
+        };
+
+        function ensureStyle() {
+            if (document.getElementById(MODAL_STYLE_ID) || !document.head) {
+                return !!document.getElementById(MODAL_STYLE_ID);
+            }
+            const style = document.createElement('style');
+            style.id = MODAL_STYLE_ID;
+            style.textContent = `
+                #${MODAL_ID} {
+                    position: fixed;
+                    z-index: 2147483647;
+                    box-sizing: border-box;
+                    width: var(--userchrome-modal-width);
+                    height: var(--userchrome-modal-height);
+                    max-width: calc(100vw - 32px);
+                    max-height: calc(100vh - 32px);
+                    min-width: 240px;
+                    min-height: 160px;
+                    padding: 0;
+                    overflow: hidden;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
+                    border-radius: 12px;
+                    background: var(--colorBg, #fff);
+                    color: var(--colorFg, #222);
+                    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.34);
+                    font: inherit;
+                }
+                #${MODAL_ID}.userchrome-modal-resizable { resize: both; }
+                #${MODAL_ID}::backdrop {
+                    background: rgba(0, 0, 0, 0.38);
+                    backdrop-filter: blur(var(--userchrome-modal-backdrop-blur));
+                }
+                #${MODAL_ID} .userchrome-modal-form {
+                    display: flex;
+                    flex-direction: column;
+                    width: 100%;
+                    height: 100%;
+                    max-height: inherit;
+                }
+                #${MODAL_ID} .userchrome-modal-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                    flex: 0 0 auto;
+                    padding: 18px 20px 12px;
+                }
+                #${MODAL_ID} .userchrome-modal-heading { min-width: 0; flex: 1 1 auto; }
+                #${MODAL_ID} .userchrome-modal-title {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                    line-height: 1.3;
+                }
+                #${MODAL_ID} .userchrome-modal-message {
+                    margin: 8px 0 0;
+                    color: var(--colorFgFaded, rgba(34, 34, 34, 0.68));
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+                #${MODAL_ID} .userchrome-modal-close {
+                    flex: 0 0 auto;
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    border: 0;
+                    border-radius: 999px;
+                    background: transparent;
+                    color: inherit;
+                    font-size: 20px;
+                    line-height: 1;
+                    cursor: pointer;
+                }
+                #${MODAL_ID} .userchrome-modal-close:hover,
+                #${MODAL_ID} .userchrome-modal-close:focus-visible { background: var(--colorBgAlphaHeavier, rgba(0, 0, 0, 0.08)); outline: none; }
+                #${MODAL_ID} .userchrome-modal-content {
+                    flex: 1 1 auto;
+                    min-height: 0;
+                    overflow: auto;
+                    padding: 8px 20px 20px;
+                }
+                #${MODAL_ID} .userchrome-modal-error {
+                    flex: 0 0 auto;
+                    min-height: 18px;
+                    padding: 0 20px 4px;
+                    color: var(--colorErrorBg, #c42b1c);
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+                #${MODAL_ID} .userchrome-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    flex: 0 0 auto;
+                    padding: 14px 20px 18px;
+                    border-top: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.14));
+                    background: var(--colorBgAlphaHeavy, var(--colorBg, #fff));
+                }
+                #${MODAL_ID} .userchrome-modal-actions button {
+                    min-width: 78px;
+                    min-height: 34px;
+                    padding: 6px 14px;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
+                    border-radius: 6px;
+                    background: var(--colorBgIntense, var(--colorBg, #fff));
+                    color: var(--colorFg, #222);
+                    font: inherit;
+                    cursor: pointer;
+                }
+                #${MODAL_ID} .userchrome-modal-actions .primary {
+                    border-color: var(--colorAccentBg, #006dcc);
+                    background: var(--colorAccentBg, #006dcc);
+                    color: var(--colorAccentFg, #fff);
+                }
+                #${MODAL_ID} .userchrome-modal-actions .danger {
+                    border-color: var(--colorErrorBg, #c42b1c);
+                    background: var(--colorErrorBg, #c42b1c);
+                    color: var(--colorErrorFg, #fff);
+                }
+            `;
+            document.head.appendChild(style);
+            return true;
+        }
+
+        function ensureDialog() {
+            if (state.dialog && state.dialog.isConnected) {
+                return state.dialog;
+            }
+            if (!ensureStyle() || !document.body) {
+                return null;
+            }
+            const existing = document.getElementById(MODAL_ID);
+            if (existing) existing.remove();
+            state.dialog = document.createElement('dialog');
+            state.dialog.id = MODAL_ID;
+            document.body.appendChild(state.dialog);
+            return state.dialog;
+        }
+
+        function settle(active, value) {
+            if (!active || active.settled) return;
+            active.settled = true;
+            active.resolve(value);
+            if (active.options.restoreFocus && active.options.restoreFocus.isConnected) {
+                active.options.restoreFocus.focus();
+            }
+            if (state.active === active) state.active = null;
+        }
+
+        function close(reason) {
+            const active = state.active;
+            if (!active) return false;
+            const dialog = active.dialog;
+            settle(active, null);
+            if (dialog.open) dialog.close(reason || 'close');
+            return true;
+        }
+
+        function open(options) {
+            const normalized = normalizeModalOptions(options);
+            if (!normalized.content) {
+                throw new TypeError('Modal content must be an HTMLElement.');
+            }
+            const dialog = ensureDialog();
+            if (!dialog) return Promise.resolve(null);
+            close('replace');
+
+            dialog.className = normalized.className;
+            dialog.classList.toggle('userchrome-modal-resizable', normalized.resizable);
+            dialog.style.setProperty('--userchrome-modal-width', normalized.width);
+            dialog.style.setProperty('--userchrome-modal-height', normalized.height);
+            dialog.style.setProperty('--userchrome-modal-backdrop-blur', normalized.backdropBlur + 'px');
+
+            const form = document.createElement('form');
+            form.className = 'userchrome-modal-form';
+            form.method = 'dialog';
+            const header = document.createElement('header');
+            header.className = 'userchrome-modal-header';
+            const heading = document.createElement('div');
+            heading.className = 'userchrome-modal-heading';
+            if (normalized.title) {
+                const title = document.createElement('h2');
+                title.className = 'userchrome-modal-title';
+                title.textContent = normalized.title;
+                heading.appendChild(title);
+            }
+            if (normalized.message) {
+                const message = document.createElement('p');
+                message.className = 'userchrome-modal-message';
+                message.textContent = normalized.message;
+                heading.appendChild(message);
+            }
+            header.appendChild(heading);
+            if (normalized.showClose) {
+                const closeButton = document.createElement('button');
+                closeButton.type = 'button';
+                closeButton.className = 'userchrome-modal-close';
+                closeButton.setAttribute('aria-label', '关闭');
+                closeButton.textContent = '×';
+                closeButton.addEventListener('click', () => close('close'));
+                header.appendChild(closeButton);
+            }
+            form.appendChild(header);
+            const content = document.createElement('div');
+            content.className = 'userchrome-modal-content';
+            content.appendChild(normalized.content);
+            form.appendChild(content);
+            const error = document.createElement('div');
+            error.className = 'userchrome-modal-error';
+            error.setAttribute('role', 'alert');
+            form.appendChild(error);
+            const actions = document.createElement('footer');
+            actions.className = 'userchrome-modal-actions';
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = normalized.cancelLabel;
+            cancelButton.addEventListener('click', () => close('cancel'));
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'submit';
+            confirmButton.className = normalized.danger ? 'danger' : 'primary';
+            confirmButton.textContent = normalized.confirmLabel;
+            actions.append(cancelButton, confirmButton);
+            form.appendChild(actions);
+            dialog.replaceChildren(form);
+
+            return new Promise((resolve) => {
+                const active = { dialog, options: normalized, resolve, settled: false };
+                state.active = active;
+                const onCancel = (event) => {
+                    event.preventDefault();
+                    close('cancel');
+                };
+                const onClick = (event) => {
+                    if (event.target === dialog) close('backdrop');
+                };
+                const onClose = () => {
+                    settle(active, null);
+                    cleanup();
+                };
+                const cleanup = () => {
+                    dialog.removeEventListener('cancel', onCancel);
+                    dialog.removeEventListener('click', onClick);
+                    dialog.removeEventListener('close', onClose);
+                    if (state.active === active) state.active = null;
+                };
+                dialog.addEventListener('cancel', onCancel);
+                dialog.addEventListener('click', onClick);
+                dialog.addEventListener('close', onClose);
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    if (active.settled) return;
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const formData = new FormData(form);
+                    let validation = '';
+                    try {
+                        validation = normalized.validate ? await normalized.validate(formData, form) : '';
+                    } catch (validationError) {
+                        console.error('[userChrome.js] Modal validation failed.', validationError);
+                        validation = '输入内容无效，请检查后重试。';
+                    }
+                    if (validation) {
+                        error.textContent = String(validation);
+                        return;
+                    }
+                    settle(active, formData);
+                    if (dialog.open) dialog.close('submit');
+                });
+                dialog.showModal();
+                requestAnimationFrame(() => {
+                    const first = form.querySelector('input, select, textarea, button');
+                    if (first) first.focus();
+                });
+            });
+        }
+
+        return { open, close };
+    }
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
@@ -1780,6 +2104,7 @@
         alertQueue: [],
         alertCounter: 0,
         menu: createMenuApi(),
+        modal: createModalApi(),
         state: createDefaultState(),
         storageReady: true,
         async init() {
