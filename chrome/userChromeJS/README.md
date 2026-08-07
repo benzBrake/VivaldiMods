@@ -9,7 +9,7 @@
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
-| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供可跨层级拖放的文件夹 Popupset、溢出菜单、设置弹窗及带助记键的项目/空白区域右键操作 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供 URL 新建书签、原生/自绘书签跨层级拖放、文件夹 Popupset、溢出菜单、设置弹窗及带助记键的项目/空白区域右键操作 |
 | Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
 | undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
@@ -226,6 +226,8 @@ element.addEventListener('contextmenu', function (event) {
 - 排序沿用 `vivaldi.bookmarks.bar.sorting` 的展示语义，不改写书签顺序；非手动排序时隐藏分隔线及“新增分隔线”操作
 - 手动排序时可在工具栏、更多书签菜单和任意层级文件夹 Popupset 中拖拽书签、文件夹及分隔线；支持弹层内纵向排序、跨文件夹移动及从文件夹移回工具栏，并通过 `chrome.bookmarks.move` 持久化目标父目录与插入位置
 - 将拖拽项目停留在工具栏或弹层中的文件夹上 650ms 会自动展开对应菜单，可继续进入新目录并在任意项目之前或之后放置；空文件夹、弹层起止区域和工具栏空白处也可接收放置，同时阻止文件夹移入自身或其后代目录
+- 支持将 `.SiteInfoButton` 及其他提供 `text/uri-list`、`text/plain` 或 HTML 链接的 URL 拖到自绘栏：空白区域追加到首个书签栏根目录，文件夹中部插入文件夹首位，手动排序时普通项目左右半区及文件夹左右三分之一区域可精确前后插入；多 URL 按载荷顺序连续创建，首项优先使用 `vivaldi/x-title` 标题
+- 自动排序时仍允许 URL 拖到根目录空白区域或文件夹，但普通书签不作为插入落点；从 Vivaldi 原生书签栏通过 `vivaldi/x-bookmarks` 拖入时默认移动，按住 `Ctrl` / `Meta` 则递归复制，并拒绝将文件夹放入自身或其后代
 - 书签项目支持编辑、重命名、剪切、复制和删除；编辑器使用原生 `<dialog>`
 - 书签项目和空白区域右键菜单将单字母助记键融合进中文标签，菜单打开后可直接按字母执行；重复助记键会循环聚焦候选项
 - 剪贴板在内存中同步缓存，并通过版本化 `chrome.storage.session` 在 Vivaldi 窗口间共享；存储 API 不可用时回退到 `sessionStorage`，复制文件夹时递归重建，剪切时调用 `chrome.bookmarks.move`
