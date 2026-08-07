@@ -1838,6 +1838,15 @@
                     box-shadow: 0 22px 64px rgba(0, 0, 0, 0.34);
                     font: inherit;
                 }
+                #${MODAL_ID}.userchrome-modal-auto-size {
+                    inset: auto;
+                    top: 50%;
+                    right: auto;
+                    bottom: auto;
+                    left: 50%;
+                    margin: 0;
+                    transform: translate(-50%, -50%);
+                }
                 #${MODAL_ID}.userchrome-modal-resizable { resize: both; }
                 #${MODAL_ID}::backdrop {
                     background: rgba(0, 0, 0, 0.38);
@@ -1978,6 +1987,7 @@
             close('replace');
 
             dialog.className = normalized.className;
+            dialog.classList.toggle('userchrome-modal-auto-size', normalized.height === 'auto');
             dialog.classList.toggle('userchrome-modal-resizable', normalized.resizable);
             dialog.style.setProperty('--userchrome-modal-width', normalized.width);
             dialog.style.setProperty('--userchrome-modal-height', normalized.height);
@@ -2038,12 +2048,20 @@
             return new Promise((resolve) => {
                 const active = { dialog, options: normalized, resolve, settled: false };
                 state.active = active;
+                let pointerDownTarget = null;
                 const onCancel = (event) => {
                     event.preventDefault();
                     close('cancel');
                 };
+                const onPointerDown = (event) => {
+                    pointerDownTarget = event.target;
+                };
                 const onClick = (event) => {
-                    if (event.target === dialog) close('backdrop');
+                    const startedInside = pointerDownTarget
+                        && pointerDownTarget !== dialog
+                        && dialog.contains(pointerDownTarget);
+                    if (event.target === dialog && !startedInside) close('backdrop');
+                    pointerDownTarget = null;
                 };
                 const onClose = () => {
                     settle(active, null);
@@ -2051,11 +2069,13 @@
                 };
                 const cleanup = () => {
                     dialog.removeEventListener('cancel', onCancel);
+                    dialog.removeEventListener('pointerdown', onPointerDown, true);
                     dialog.removeEventListener('click', onClick);
                     dialog.removeEventListener('close', onClose);
                     if (state.active === active) state.active = null;
                 };
                 dialog.addEventListener('cancel', onCancel);
+                dialog.addEventListener('pointerdown', onPointerDown, true);
                 dialog.addEventListener('click', onClick);
                 dialog.addEventListener('close', onClose);
                 form.addEventListener('submit', async (event) => {
