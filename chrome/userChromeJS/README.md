@@ -67,7 +67,7 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 
 - `message`: 通知正文
 - `options.type`: `info | success | warn | error`
-- `options.duration`: 停留毫秒数，默认 `3000`；传 `0` 时保持显示直到手动关闭
+- `options.duration`: 停留毫秒数，默认 `3000`；传 `0` 时保持显示直到手动关闭；鼠标悬停时暂停自动关闭，移开后按剩余时长继续计时
 - `options.title`: 可选标题
 - `options.closable`: 是否显示关闭按钮，默认 `true`
 - `options.onClick`: 点击整条通知时触发，触发后自动关闭当前通知

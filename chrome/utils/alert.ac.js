@@ -396,10 +396,7 @@
             activeAlertsByKey.delete(notification.dedupeKey);
         }
 
-        if (notification.timerId !== null) {
-            clearTimeout(notification.timerId);
-            notification.timerId = null;
-        }
+        clearAlertTimer(notification);
 
         alertQueue = alertQueue.filter(function (queued) {
             return queued !== notification;
@@ -501,21 +498,78 @@
             triggerClick(event);
         });
 
+        element.addEventListener('mouseenter', function () {
+            pauseAlertTimer(notification);
+        });
+
+        element.addEventListener('mouseleave', function () {
+            resumeAlertTimer(notification);
+        });
+
         updateAlertElement(notification);
         return element;
     }
 
-    function resetAlertTimer(notification) {
+    function clearAlertTimer(notification) {
         if (notification.timerId !== null) {
             clearTimeout(notification.timerId);
             notification.timerId = null;
         }
 
-        if (notification.duration > 0) {
-            notification.timerId = setTimeout(function () {
-                closeAlert(notification);
-            }, notification.duration);
+        notification.timerStartedAt = null;
+    }
+
+    function startAlertTimer(notification) {
+        if (notification.closed || notification.isHovered || notification.duration <= 0) {
+            return;
         }
+
+        if (notification.remainingDuration <= 0) {
+            closeAlert(notification);
+            return;
+        }
+
+        notification.timerStartedAt = Date.now();
+        notification.timerId = setTimeout(function () {
+            notification.timerId = null;
+            notification.timerStartedAt = null;
+            notification.remainingDuration = 0;
+            closeAlert(notification);
+        }, notification.remainingDuration);
+    }
+
+    function pauseAlertTimer(notification) {
+        if (notification.closed || notification.isHovered) {
+            return;
+        }
+
+        notification.isHovered = true;
+        if (notification.timerId === null) {
+            return;
+        }
+
+        const elapsed = Math.max(0, Date.now() - notification.timerStartedAt);
+        notification.remainingDuration = Math.max(0, notification.remainingDuration - elapsed);
+        clearAlertTimer(notification);
+
+        if (notification.remainingDuration <= 0) {
+            closeAlert(notification);
+        }
+    }
+
+    function resumeAlertTimer(notification) {
+        if (notification.closed || !notification.isHovered) {
+            return;
+        }
+
+        notification.isHovered = false;
+        startAlertTimer(notification);
+    }
+
+    function resetAlertTimer(notification) {
+        clearAlertTimer(notification);
+        notification.remainingDuration = notification.duration;
+        startAlertTimer(notification);
     }
 
     function updateAlert(notification, settings) {
@@ -555,6 +609,9 @@
             closable: settings.closable,
             onClick: settings.onClick,
             timerId: null,
+            timerStartedAt: null,
+            remainingDuration: settings.duration,
+            isHovered: false,
             closed: false,
             element: null
         };
