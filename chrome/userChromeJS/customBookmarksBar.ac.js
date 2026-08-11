@@ -112,7 +112,6 @@
     const MORE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.92429 3.07574C3.68997 2.84142 3.31007 2.84142 3.07576 3.07574C2.84145 3.31005 2.84145 3.68995 3.07576 3.92426L7.1515 8L3.07576 12.0757C2.84145 12.3101 2.84145 12.6899 3.07576 12.9243C3.31007 13.1586 3.68997 13.1586 3.92429 12.9243L8.84855 8L3.92429 3.07574Z" fill="currentColor"></path><path d="M8.92429 3.07574C8.68997 2.84142 8.31007 2.84142 8.07576 3.07574C7.84145 3.31005 7.84145 3.68995 8.07576 3.92426L12.1515 8L8.07576 12.0757C7.84145 12.3101 7.84145 12.6899 8.07576 12.9243C8.31007 13.1586 8.68997 13.1586 8.92429 12.9243L13.8486 8L8.92429 3.07574Z" fill="currentColor"></path></svg>';
 
     if (window[INSTANCE_KEY]) {
-        console.info(LOG_PREFIX, 'Script instance already exists.');
         return;
     }
 
@@ -179,14 +178,6 @@
 
     window[INSTANCE_KEY] = state;
 
-    function log (message, details) {
-        if (typeof details === 'undefined') {
-            console.info(LOG_PREFIX, message);
-        } else {
-            console.info(LOG_PREFIX, message, details);
-        }
-    }
-
     function warn (message, details) {
         if (typeof details === 'undefined') {
             console.warn(LOG_PREFIX, message);
@@ -212,7 +203,7 @@
         if (typeof alerts === 'function') {
             alerts.call(window.userChrome_js, message, { type: type || 'info' });
         } else {
-            log(message);
+            warn(message);
         }
     }
 
@@ -697,7 +688,6 @@
             `
         });
         document.head.appendChild(style);
-        log('Injected bookmark bar style.');
     }
 
     function unwrapPreference (result, fallback) {
@@ -717,7 +707,6 @@
         try {
             const result = await prefs.get(path);
             const value = unwrapPreference(result, fallback);
-            log('Read preference.', { path, value });
             return value;
         } catch (error) {
             reportError('Failed to read preference: ' + path, error);
@@ -731,7 +720,6 @@
             throw new Error('vivaldi.prefs.set is unavailable for ' + path + '.');
         }
         await prefs.set({ path, value });
-        log('Wrote preference.', { path, value });
     }
 
     function normalizeCustomSettings (value) {
@@ -1704,13 +1692,6 @@
         ));
         const roots = [];
 
-        log('Loading bookmark roots.', {
-            reason,
-            folderIds: configuredFolderIds,
-            displayMode,
-            sorting
-        });
-
         for (const folderId of configuredFolderIds) {
             try {
                 const result = await getBookmarkSubTree(folderId);
@@ -1722,18 +1703,12 @@
                 const root = cloneBookmarkNode(rawRoot);
                 sortBookmarkTree(root.children, sorting);
                 roots.push(root);
-                log('Loaded bookmark root.', {
-                    folderId,
-                    title: root.title,
-                    childCount: root.children.length
-                });
             } catch (error) {
                 reportError('Failed to load bookmark root: ' + folderId, error);
             }
         }
 
         if (requestId !== state.requestId) {
-            log('Discarded stale bookmark load.', { requestId });
             return false;
         }
 
@@ -1761,12 +1736,6 @@
             signature: signature
         };
 
-        log('Bookmark data ready.', {
-            rootCount: roots.length,
-            topLevelCount: topLevel.length,
-            relevantCount: relevantIds.size,
-            changed: changed
-        });
         return changed;
     }
 
@@ -2391,10 +2360,6 @@
             if (!session) {
                 throw new Error('Menu root is unavailable.');
             }
-            log('Opened bookmark context menu.', {
-                id: node.id,
-                kind: isSeparatorBookmark(node) ? 'separator' : (node.url ? 'bookmark' : 'folder')
-            });
         } catch (error) {
             reportError('Failed to open bookmark context menu: ' + node.id, error);
             notify('打开书签右键菜单失败，请查看控制台。', 'error');
@@ -2444,7 +2409,6 @@
             }
             window.addEventListener('keydown', updateMenuInteractionMode, true);
             window.addEventListener('pointermove', updateMenuInteractionMode, true);
-            log('Opened bookmark bar context menu.', { folderId: folder.id });
         } catch (error) {
             reportError('Failed to open bookmark bar context menu: ' + folder.id, error);
             notify('打开书签栏右键菜单失败，请查看控制台。', 'error');
@@ -2559,10 +2523,6 @@
             }
             decorateBookmarkPopupLevel(controller.element, items, node);
             state.folderPopups.set(popupId, controller);
-            log('Registered folder popup.', {
-                popupId,
-                childCount: node.children.length
-            });
             return controller;
         } catch (error) {
             reportError('Failed to register folder popup: ' + popupId, error);
@@ -2608,7 +2568,6 @@
             decorateBookmarkPopupLevel(controller.element, items, null);
             state.morePopup = controller;
             state.moreKey = key;
-            log('Registered more popup.', { hiddenCount: hiddenNodes.length });
             return controller;
         } catch (error) {
             reportError('Failed to register more popup.', error);
@@ -3120,7 +3079,6 @@
         const nativeBookmarkIds = sourceType === 'bookmark'
             ? parseNativeBookmarkIds(event)
             : [];
-        const targetId = state.drag.targetId;
         const targetParentId = state.drag.targetParentId;
         const targetIndex = state.drag.targetIndex;
         const position = state.drag.position;
@@ -3147,13 +3105,6 @@
                 }
                 await createBookmarksFromDrop(dropData, targetParentId, targetIndex);
                 notify(dropData.urls.length === 1 ? '已添加书签。' : '已添加多个书签。', 'success');
-                log('Created bookmarks from URL drag.', {
-                    targetId,
-                    targetParentId,
-                    targetIndex,
-                    urlCount: dropData.urls.length,
-                    position
-                });
             } else {
                 const ids = state.drag.sourceElement && state.drag.sourceIds.length
                     ? state.drag.sourceIds
@@ -3184,13 +3135,6 @@
                     await moveBookmarksFromDrop(nodes, targetParentId, targetIndex);
                 }
                 notify(copy ? '已复制书签项目。' : '已移动书签项目。', 'success');
-                log(copy ? 'Copied bookmarks from drag.' : 'Moved bookmarks from drag.', {
-                    sourceIds: ids,
-                    targetId,
-                    targetParentId,
-                    targetIndex,
-                    position
-                });
             }
             scheduleRefresh('bookmark drag completed', true);
         } catch (error) {
@@ -3483,14 +3427,13 @@
         const popup = controller.open({
             anchor: button,
             restoreFocus: button,
-            onClose: function (reason) {
+            onClose: function () {
                 if (button.isConnected) {
                     button.setAttribute('aria-expanded', 'false');
                 }
                 if (state.activePopupController === controller) {
                     state.activePopupController = null;
                 }
-                log('Folder popup closed.', { id: node.id, reason });
             }
         });
         if (!popup) {
@@ -3499,7 +3442,6 @@
         }
         state.activePopupController = controller;
         button.setAttribute('aria-expanded', 'true');
-        log('Folder popup opened.', { id: node.id, childCount: node.children.length });
     }
 
     function parseVivExtData (tab) {
@@ -3614,7 +3556,6 @@
             mode = openInNewTab === true ? 'new-tab' : 'current-tab';
         }
 
-        log('Opening bookmark.', { id: node.id, url: node.url, mode });
         await openNodeInMode(node, mode);
     }
 
@@ -3640,14 +3581,9 @@
             }
 
             const title = String(activeTab.title || url).trim() || url;
-            const bookmark = await createBookmark({
+            await createBookmark({
                 parentId: String(folder.id),
                 title: title,
-                url: url
-            });
-            log('Added current page to bookmark folder.', {
-                folderId: folder.id,
-                bookmarkId: bookmark && bookmark.id,
                 url: url
             });
         } catch (error) {
@@ -3665,14 +3601,13 @@
         const popup = controller.open({
             anchor: button,
             restoreFocus: button,
-            onClose: function (reason) {
+            onClose: function () {
                 if (button.isConnected) {
                     button.setAttribute('aria-expanded', 'false');
                 }
                 if (state.activePopupController === controller) {
                     state.activePopupController = null;
                 }
-                log('More popup closed.', { reason });
             }
         });
         if (!popup) {
@@ -3681,7 +3616,6 @@
         }
         state.activePopupController = controller;
         button.setAttribute('aria-expanded', 'true');
-        log('More popup opened.', { hiddenCount: state.hiddenNodes.length });
     }
 
     function getItemWidthTotal (entries, count) {
@@ -3776,11 +3710,6 @@
         }
         state.moreKey = nextMoreKey;
         updateRovingTabIndex();
-        log('Calculated bookmark layout.', {
-            rowWidth,
-            visibleCount,
-            hiddenCount: state.hiddenNodes.length
-        });
     }
 
     function renderBookmarkBar () {
@@ -3810,7 +3739,6 @@
             state.emptyState = empty;
             updateRovingTabIndex();
             requestAnimationFrame(layoutMore);
-            log('Rendered an empty bookmark bar.');
             return;
         }
 
@@ -3826,10 +3754,6 @@
 
         updateRovingTabIndex();
         requestAnimationFrame(layoutMore);
-        log('Rendered bookmark bar.', {
-            itemCount: state.buttons.length,
-            displayMode: state.data.displayMode
-        });
     }
 
     function unmount (reason) {
@@ -3859,7 +3783,6 @@
         state.emptyState = null;
         state.buttons = [];
         state.hiddenNodes = [];
-        log('Unmounted custom bookmark bar.', { reason });
     }
 
     function ensureMount (reason) {
@@ -3963,12 +3886,6 @@
             warn('ResizeObserver is unavailable; more menu will update on render only.');
         }
 
-        log('Mounted custom bookmark bar.', {
-            reason,
-            hostClass: host.className,
-            observerFound: Boolean(observer),
-            positionClass: document.body && document.body.className
-        });
         return true;
     }
 
@@ -4011,7 +3928,6 @@
     function scheduleRefresh (reason, force) {
         // Imports emit many transient bookmark events; wait for onImportEnded before rebuilding.
         if (state.importing && !force) {
-            log('Skipped bookmark refresh during import.', { reason });
             return;
         }
         if (state.refreshTimer) {
@@ -4053,7 +3969,6 @@
         }
         event.addListener(handler);
         state.bookmarkListeners.push({ event, handler });
-        log('Attached bookmark event.', { eventName });
     }
 
     function attachRuntimeListeners () {
@@ -4072,7 +3987,6 @@
                 state.bookmarkClipboard = normalizeBookmarkClipboard(changes[CLIPBOARD_KEY].newValue);
             };
             storageChanged.addListener(state.clipboardStorageListener);
-            log('Attached bookmark clipboard storage listener.');
 
             state.customSettingsStorageListener = function (changes, areaName) {
                 if (areaName !== 'local' || !changes || !changes[CUSTOM_SETTINGS_KEY]) {
@@ -4080,7 +3994,6 @@
                 }
                 state.settings = normalizeCustomSettings(changes[CUSTOM_SETTINGS_KEY].newValue);
                 applyCustomSettings();
-                log('Custom bookmark bar settings changed in another window.');
             };
             storageChanged.addListener(state.customSettingsStorageListener);
         } else {
@@ -4114,11 +4027,9 @@
         });
         attachBookmarkEvent('onImportBegan', 'import-began', function () {
             state.importing = true;
-            log('Bookmark import began.');
         });
         attachBookmarkEvent('onImportEnded', 'import-ended', function () {
             state.importing = false;
-            log('Bookmark import ended.');
             scheduleRefresh('bookmark import ended', true);
         });
 
@@ -4132,7 +4043,6 @@
             };
             metaInfoChanged.addListener(handler);
             state.bookmarkListeners.push({ event: metaInfoChanged, handler });
-            log('Attached bookmark metadata event.');
         } else {
             warn('vivaldi.bookmarksPrivate.onMetaInfoChanged is unavailable.');
         }
@@ -4148,12 +4058,10 @@
                     || path === BOOKMARKS_DISPLAY_PREF
                     || path === BOOKMARKS_SORTING_PREF
                     || path === BOOKMARKS_OPEN_IN_NEW_TAB_PREF) {
-                    log('Bookmark preference changed.', { path, args });
                     scheduleRefresh('bookmark preference changed', true);
                 }
             };
             prefs.onChanged.addListener(state.prefListener);
-            log('Attached bookmark preference listener.');
         } else {
             warn('vivaldi.prefs.onChanged is unavailable; preference refresh uses focus and DOM events.');
         }
@@ -4187,20 +4095,12 @@
                     scheduleRefresh('bookmark bar DOM changed');
                 }
             });
-            log('Attached shared added-node observer.');
         } else {
             warn('userChrome_js.observeAddedNodes is unavailable.');
         }
     }
 
     async function init () {
-        log('Initializing custom bookmark bar.');
-        log('Runtime API availability.', {
-            bookmarksGetSubTree: Boolean(getBookmarksApi() && typeof getBookmarksApi().getSubTree === 'function'),
-            tabsQuery: Boolean(window.chrome && window.chrome.tabs && typeof window.chrome.tabs.query === 'function'),
-            menuRegister: Boolean(getMenuApi() && typeof getMenuApi().register === 'function'),
-            menuOpenPopup: Boolean(getMenuApi() && typeof getMenuApi().openPopup === 'function')
-        });
         ensureStyle();
         attachRuntimeListeners();
         state.settings = await readCustomSettings();
