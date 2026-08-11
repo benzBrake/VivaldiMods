@@ -64,7 +64,7 @@ Vivaldi 的 UC Loader（UC 环境），用于载入 `.css` 和 `.ac.js`。我出
 
 ## userChrome.js
 
-userChrome.js 提供了额外的`$`函数，操作 DOM 可以方便一点；右下角通知由优先加载的 `VAlert` 工具提供：
+userChrome.js 提供了额外的`$`函数，操作 DOM 可以方便一点；内容区下方通知由优先加载的 `VAlert` 工具提供，右侧垂直标签栏时会自动显示在左下角：
 
 ```js
 VAlert.show('设置已保存');

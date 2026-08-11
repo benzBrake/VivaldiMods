@@ -3,7 +3,7 @@
 // @description     Vivaldi UI 全局非阻塞通知 API
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.1.0
+// @version         0.2.0
 // @charset         UTF-8
 // ==/UserScript==
 (() => {
@@ -13,12 +13,18 @@
 
     const ALERT_STYLE_ID = 'userchrome-alert-style';
     const ALERT_CONTAINER_ID = 'userchrome-alert-container';
+    const ALERT_POSITION_LEFT_CLASS = 'userchrome-alert-position-left';
+    const ALERT_POSITION_RIGHT_CLASS = 'userchrome-alert-position-right';
     const ALERT_DEFAULT_DURATION = 3000;
     const ALERT_TYPES = ['info', 'success', 'warn', 'error'];
     let alertContainer = null;
     let alertMountTimer = null;
     let alertQueue = [];
     let alertCounter = 0;
+    let alertPositionObserver = null;
+    let alertPositionRefreshPending = false;
+    let alertPositionResizeListening = false;
+    const alertPositionTargets = new WeakSet();
 
     function sanitizeOptions(message, options) {
         const normalizedMessage = typeof message === 'string' ? message.trim() : String(message || '').trim();
@@ -61,6 +67,109 @@
         return element;
     }
 
+    function getAlertHost() {
+        return document.getElementById('webview-container') || document.body || document.documentElement;
+    }
+
+    function ensureAlertHostPosition(host) {
+        if (!host || host.id !== 'webview-container' || getComputedStyle(host).position !== 'static') {
+            return;
+        }
+
+        host.style.position = 'relative';
+    }
+
+    function getTabBarSide() {
+        const browser = document.getElementById('browser');
+        const tabBar = document.getElementById('tabs-tabbar-container');
+        const wrapper = tabBar && tabBar.closest('.auto-hide-wrapper');
+
+        if ((tabBar && tabBar.classList.contains('left'))
+            || (wrapper && wrapper.classList.contains('left'))
+            || (browser && browser.classList.contains('tabs-left'))) {
+            return 'left';
+        }
+
+        if ((tabBar && tabBar.classList.contains('right'))
+            || (wrapper && wrapper.classList.contains('right'))
+            || (browser && browser.classList.contains('tabs-right'))) {
+            return 'right';
+        }
+
+        return null;
+    }
+
+    function updateAlertPosition() {
+        if (!alertContainer) {
+            return;
+        }
+
+        const alertSide = getTabBarSide() === 'right' ? 'left' : 'right';
+        alertContainer.classList.remove(ALERT_POSITION_LEFT_CLASS, ALERT_POSITION_RIGHT_CLASS);
+        alertContainer.classList.add(alertSide === 'left'
+            ? ALERT_POSITION_LEFT_CLASS
+            : ALERT_POSITION_RIGHT_CLASS);
+    }
+
+    function observeAlertPositionTarget(target) {
+        if (!target || !alertPositionObserver || alertPositionTargets.has(target)) {
+            return;
+        }
+
+        alertPositionTargets.add(target);
+        alertPositionObserver.observe(target, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    function refreshAlertPosition() {
+        const host = getAlertHost();
+        const tabBar = document.getElementById('tabs-tabbar-container');
+
+        if (alertContainer && alertContainer.isConnected && host && alertContainer.parentElement !== host) {
+            ensureAlertHostPosition(host);
+            host.appendChild(alertContainer);
+            alertContainer.dataset.host = host.id === 'webview-container' ? 'webview' : 'document';
+        }
+
+        observeAlertPositionTarget(document.getElementById('browser'));
+        observeAlertPositionTarget(tabBar);
+        observeAlertPositionTarget(tabBar && tabBar.closest('.auto-hide-wrapper'));
+        updateAlertPosition();
+    }
+
+    function scheduleAlertPositionRefresh() {
+        if (alertPositionRefreshPending) {
+            return;
+        }
+
+        alertPositionRefreshPending = true;
+        requestAnimationFrame(function () {
+            alertPositionRefreshPending = false;
+            refreshAlertPosition();
+        });
+    }
+
+    function ensureAlertPositioning() {
+        if (!alertPositionObserver && typeof MutationObserver === 'function') {
+            alertPositionObserver = new MutationObserver(scheduleAlertPositionRefresh);
+            if (document.documentElement) {
+                alertPositionObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+
+        if (!alertPositionResizeListening) {
+            alertPositionResizeListening = true;
+            window.addEventListener('resize', updateAlertPosition, { passive: true });
+        }
+
+        refreshAlertPosition();
+    }
+
     function ensureAlertStyle() {
         if (document.getElementById(ALERT_STYLE_ID)) {
             return true;
@@ -84,6 +193,20 @@
                 gap: 10px;
                 width: min(360px, calc(100vw - 32px));
                 pointer-events: none;
+            }
+
+            #${ALERT_CONTAINER_ID}[data-host='webview'] {
+                position: absolute;
+            }
+
+            #${ALERT_CONTAINER_ID}.${ALERT_POSITION_LEFT_CLASS} {
+                right: auto;
+                left: 20px;
+            }
+
+            #${ALERT_CONTAINER_ID}.${ALERT_POSITION_RIGHT_CLASS} {
+                right: 20px;
+                left: auto;
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert {
@@ -185,20 +308,38 @@
 
     function ensureAlertContainer() {
         if (alertContainer && alertContainer.isConnected) {
+            const host = getAlertHost();
+            if (host && alertContainer.parentElement !== host) {
+                ensureAlertHostPosition(host);
+                host.appendChild(alertContainer);
+                alertContainer.dataset.host = host.id === 'webview-container' ? 'webview' : 'document';
+            }
+            updateAlertPosition();
             return alertContainer;
         }
 
-        if (!ensureAlertStyle() || !document.body) {
+        const host = getAlertHost();
+        if (!ensureAlertStyle() || !host) {
             return null;
         }
 
-        const container = document.createElement('section');
-        container.id = ALERT_CONTAINER_ID;
-        container.setAttribute('aria-live', 'polite');
-        container.setAttribute('aria-atomic', 'false');
-        document.body.appendChild(container);
-        alertContainer = container;
-        return container;
+        ensureAlertHostPosition(host);
+
+        alertContainer = document.getElementById(ALERT_CONTAINER_ID);
+        if (!alertContainer) {
+            alertContainer = document.createElement('section');
+            alertContainer.id = ALERT_CONTAINER_ID;
+            alertContainer.setAttribute('aria-live', 'polite');
+            alertContainer.setAttribute('aria-atomic', 'false');
+        }
+
+        if (alertContainer.parentElement !== host) {
+            host.appendChild(alertContainer);
+        }
+
+        alertContainer.dataset.host = host.id === 'webview-container' ? 'webview' : 'document';
+        ensureAlertPositioning();
+        return alertContainer;
     }
 
     function scheduleAlertFlush() {

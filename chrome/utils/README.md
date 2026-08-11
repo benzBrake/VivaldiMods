@@ -18,4 +18,4 @@
 
 ### `window.VAlert.show(message, options?)`
 
-在浏览器右下角显示通知。支持 `info`、`success`、`warn`、`error` 类型；`duration` 默认 `3000` 毫秒，传入 `0` 时保持显示；还支持 `title`、`closable` 和 `onClick`。返回通知对象可通过 `.close()` 手动关闭。
+通知优先挂载到 Vivaldi 的 `#webview-container` 内容区下方：默认右下角，使用右侧垂直标签栏时切换到左下角，避免遮挡标签栏。支持 `info`、`success`、`warn`、`error` 类型；`duration` 默认 `3000` 毫秒，传入 `0` 时保持显示；还支持 `title`、`closable` 和 `onClick`。返回通知对象可通过 `.close()` 手动关闭。

@@ -63,7 +63,7 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 
 ### `window.VAlert.show(message, options?)`
 
-`VAlert` 由 `chrome/utils/alert.ac.js` 提供，并在普通 Mod 注入前加载。在浏览器右下角显示非阻塞通知。
+`VAlert` 由 `chrome/utils/alert.ac.js` 提供，并在普通 Mod 注入前加载。在 Vivaldi 内容区下方显示非阻塞通知：默认右下角，右侧垂直标签栏时自动切换到左下角。
 
 - `message`: 通知正文
 - `options.type`: `info | success | warn | error`
