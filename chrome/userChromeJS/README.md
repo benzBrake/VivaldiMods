@@ -4,7 +4,6 @@
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | activateTabOnHover.ac.js      | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏）                                                                                 |
 | chromeDevtools_Button.ac.js   | 侧边栏 DevTools 按钮：优先连`localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
-| global-media-controls.ac.js   | 侧边栏增加一个全局播放控制面板                                                                                                      |
 | test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、助记键、级联子菜单、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制                       |
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |

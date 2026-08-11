@@ -20,10 +20,10 @@
 
 - `chrome/userChromeJS/`
   存放行为脚本。新增脚本默认放这里，沿用 `.ac.js` 命名。
-- `chrome/styles/`
-  存放直接修改 Vivaldi 界面的样式。
-- `chrome/legacy/`
-  存放“仿 Firefox 外观”的 Vivaldi 资源。这里只是视觉风格借鉴，不代表仓库整体是 Firefox 适配项目。
+- `chrome/userStyles/`
+  存放直接修改 Vivaldi 界面的样式；仿 Firefox 外观的兼容样式放在 `chrome/userStyles/legacy/`。
+- `chrome/utils/`
+  存放供 Loader 或其他 Mod 显式引用的工具资源。该目录不会被自动注入为 Mod。
 - `**/deprecated/`
   存放已废弃或不再推荐扩展的内容。除非用户明确要求维护兼容，否则不要继续在这些目录里新增功能。
 
@@ -33,7 +33,7 @@
 - 优先复用现有 `chrome/userChrome.js` 提供的加载方式和全局 `$` 辅助函数。
 - 允许使用仓库当前已有风格里的 `chrome.*`、`vivaldi.*`、DOM 事件监听和动态注入方式。
 - 写样式时，选择器应面向 Vivaldi UI，而不是 Firefox 的 `userChrome.css` 约定。
-- 修改时优先保持现有目录结构、命名风格和注入方式一致。
+- 修改时优先保持现有目录结构、命名风格和注入方式一致；`chrome/userChrome.js` 仍是唯一入口。
 
 ## 明确不要做的事
 
@@ -46,8 +46,9 @@
 ## 协作说明
 
 - 新增脚本时，默认放到 `chrome/userChromeJS/*.ac.js`。
-- 新增样式时，默认放到 `chrome/styles/*.css`。
-- 新增仿 Firefox 风格但仍服务于 Vivaldi 的样式，可放到 `chrome/legacy/*`。
+- 新增样式时，默认放到 `chrome/userStyles/*.css`。
+- 新增仿 Firefox 风格但仍服务于 Vivaldi 的样式，放到 `chrome/userStyles/legacy/*`。
+- 新增工具资源时，放到 `chrome/utils/`，并由调用方显式引用；不要依赖自动注入。
 - 改动说明优先写清：
   - 影响的是哪个 Vivaldi UI 区域。
   - 依赖了哪些选择器、DOM 结构、`chrome.*` 或 `vivaldi.*` API。
@@ -55,14 +56,15 @@
 - AI 在新增、删除、重命名、移动或明显调整脚本/样式时，必须同步检查并更新对应子目录的 `README.md`。
 - 目录与 README 的默认对应关系如下：
   - `chrome/userChromeJS/` 对应 `chrome/userChromeJS/README.md`
-  - `chrome/styles/` 对应 `chrome/styles/README.md`
-  - `chrome/legacy/` 对应 `chrome/legacy/README.md`
+  - `chrome/userStyles/` 对应 `chrome/userStyles/README.md`
+  - `chrome/userStyles/legacy/` 对应 `chrome/userStyles/legacy/README.md`
+  - `chrome/utils/` 对应 `chrome/utils/README.md`
 - 如果变更影响文件清单、文件名、用途说明或目录分类，不能只改代码，必须同时更新对应 README。
 
 ## 提交前检查
 
 - 每次准备 commit 时，都要检查本次变更里是否包含脚本或样式文件的新增、删除、重命名、迁移或用途变化。
-- 只要 `chrome/userChromeJS/`、`chrome/styles/`、`chrome/legacy/` 或其下级目录有相关变动，就要核对对应 `README.md` 是否已经同步。
+- 只要 `chrome/userChromeJS/`、`chrome/userStyles/`、`chrome/utils/` 或其下级目录有相关变动，就要核对对应 `README.md` 是否已经同步。
 - 如果 README 未同步，先补齐文档，再提交。
 - 提交说明里应简要反映这次脚本/样式变更影响了哪个区域，以及 README 是否已更新。
 
