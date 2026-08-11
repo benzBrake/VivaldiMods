@@ -74,6 +74,11 @@ VAlert.show('需要重启 Vivaldi 才会生效', {
     duration: 5000
 });
 
+VAlert.show('下载完成', {
+    id: 'download-complete',
+    type: 'success'
+});
+
 VAlert.show('点击打开 Mod 管理器', {
     title: '提示',
     onClick(event, notification) {
@@ -89,6 +94,8 @@ VAlert.show('点击打开 Mod 管理器', {
 - `title`: 可选标题
 - `closable`: 是否显示关闭按钮，默认 `true`
 - `onClick`: 点击整条通知时触发的回调，触发后会自动关闭当前通知
+- `id`: 非空字符串或数字；相同 ID 更新已有通知并按新的 `duration` 重新计时
+- `messageId`: `id` 的兼容别名；同时传入时优先使用 `id`
 
 ## 题外话
 

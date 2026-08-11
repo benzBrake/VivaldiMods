@@ -3,7 +3,7 @@
 // @description     Vivaldi UI 全局非阻塞通知 API
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.0
+// @version         0.3.0
 // @charset         UTF-8
 // ==/UserScript==
 (() => {
@@ -21,6 +21,7 @@
     let alertMountTimer = null;
     let alertQueue = [];
     let alertCounter = 0;
+    const activeAlertsByKey = new Map();
     let alertPositionObserver = null;
     let alertPositionRefreshPending = false;
     let alertPositionResizeListening = false;
@@ -37,8 +38,18 @@
             type: type,
             duration: duration,
             closable: settings.closable !== false,
-            onClick: typeof settings.onClick === 'function' ? settings.onClick : null
+            onClick: typeof settings.onClick === 'function' ? settings.onClick : null,
+            dedupeKey: getAlertDedupeKey(settings.id) || getAlertDedupeKey(settings.messageId)
         };
+    }
+
+    function getAlertDedupeKey(value) {
+        if (typeof value === 'string') {
+            const normalized = value.trim();
+            return normalized ? normalized : null;
+        }
+
+        return typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
     }
 
     function createElement(tag, attrs) {
@@ -381,7 +392,11 @@
         }
 
         notification.closed = true;
-        if (notification.timerId) {
+        if (notification.dedupeKey && activeAlertsByKey.get(notification.dedupeKey) === notification) {
+            activeAlertsByKey.delete(notification.dedupeKey);
+        }
+
+        if (notification.timerId !== null) {
             clearTimeout(notification.timerId);
             notification.timerId = null;
         }
@@ -406,16 +421,26 @@
         setTimeout(teardown, 180);
     }
 
-    function createAlertElement(notification) {
-        const element = document.createElement('article');
+    function updateAlertElement(notification) {
+        const element = notification.element;
+        const visible = element.classList.contains('is-visible');
         element.className = 'userchrome-alert';
         element.dataset.type = notification.type;
-        element.setAttribute('role', 'status');
+        element.setAttribute('role', notification.onClick ? 'button' : 'status');
+
+        if (visible) {
+            element.classList.add('is-visible');
+        }
 
         if (notification.onClick) {
             element.classList.add('is-clickable');
-            element.setAttribute('role', 'button');
             element.tabIndex = 0;
+        } else {
+            element.removeAttribute('tabindex');
+        }
+
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
         }
 
         if (notification.title) {
@@ -442,34 +467,67 @@
                 }
             }));
         }
+    }
 
-        if (notification.onClick) {
-            const triggerClick = function (event) {
-                try {
-                    notification.onClick(event, notification);
-                } catch (error) {
-                    console.error('[VAlert] Alert onClick failed.', error);
-                }
-                closeAlert(notification);
-            };
+    function createAlertElement(notification) {
+        const element = document.createElement('article');
+        notification.element = element;
 
-            element.addEventListener('click', function (event) {
-                if (event.target && event.target.closest('.userchrome-alert-close')) {
-                    return;
-                }
-                triggerClick(event);
-            });
+        const triggerClick = function (event) {
+            if (!notification.onClick) {
+                return;
+            }
 
-            element.addEventListener('keydown', function (event) {
-                if (event.key !== 'Enter' && event.key !== ' ') {
-                    return;
-                }
-                event.preventDefault();
-                triggerClick(event);
-            });
+            try {
+                notification.onClick(event, notification);
+            } catch (error) {
+                console.error('[VAlert] Alert onClick failed.', error);
+            }
+            closeAlert(notification);
+        };
+
+        element.addEventListener('click', function (event) {
+            if (event.target && event.target.closest('.userchrome-alert-close')) {
+                return;
+            }
+            triggerClick(event);
+        });
+
+        element.addEventListener('keydown', function (event) {
+            if (!notification.onClick || (event.key !== 'Enter' && event.key !== ' ')) {
+                return;
+            }
+            event.preventDefault();
+            triggerClick(event);
+        });
+
+        updateAlertElement(notification);
+        return element;
+    }
+
+    function resetAlertTimer(notification) {
+        if (notification.timerId !== null) {
+            clearTimeout(notification.timerId);
+            notification.timerId = null;
         }
 
-        return element;
+        if (notification.duration > 0) {
+            notification.timerId = setTimeout(function () {
+                closeAlert(notification);
+            }, notification.duration);
+        }
+    }
+
+    function updateAlert(notification, settings) {
+        notification.title = settings.title;
+        notification.message = settings.message;
+        notification.type = settings.type;
+        notification.duration = settings.duration;
+        notification.closable = settings.closable;
+        notification.onClick = settings.onClick;
+        updateAlertElement(notification);
+        resetAlertTimer(notification);
+        return notification;
     }
 
     function show(message, options) {
@@ -478,8 +536,18 @@
             return null;
         }
 
+        const existing = settings.dedupeKey && activeAlertsByKey.get(settings.dedupeKey);
+        if (existing && !existing.closed) {
+            return updateAlert(existing, settings);
+        }
+
+        if (settings.dedupeKey) {
+            activeAlertsByKey.delete(settings.dedupeKey);
+        }
+
         const notification = {
             id: ++alertCounter,
+            dedupeKey: settings.dedupeKey,
             title: settings.title,
             message: settings.message,
             type: settings.type,
@@ -496,6 +564,9 @@
         };
 
         notification.element = createAlertElement(notification);
+        if (notification.dedupeKey) {
+            activeAlertsByKey.set(notification.dedupeKey, notification);
+        }
         alertQueue.push(notification);
         flushAlertQueue();
 
@@ -503,11 +574,7 @@
             scheduleAlertFlush();
         }
 
-        if (notification.duration > 0) {
-            notification.timerId = setTimeout(function () {
-                closeAlert(notification);
-            }, notification.duration);
-        }
+        resetAlertTimer(notification);
 
         return notification;
     }

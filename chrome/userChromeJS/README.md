@@ -71,6 +71,8 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 - `options.title`: 可选标题
 - `options.closable`: 是否显示关闭按钮，默认 `true`
 - `options.onClick`: 点击整条通知时触发，触发后自动关闭当前通知
+- `options.id`: 非空字符串或数字；相同 ID 更新已有通知并按新的 `duration` 重新计时
+- `options.messageId`: `id` 的兼容别名；同时传入时优先使用 `id`
 
 示例：
 
@@ -80,6 +82,11 @@ VAlert.show('设置已保存');
 VAlert.show('需要重启 Vivaldi 后生效', {
     type: 'warn',
     duration: 5000
+});
+
+VAlert.show('下载完成', {
+    id: 'download-complete',
+    type: 'success'
 });
 
 VAlert.show('点击打开 Mod 管理器', {
