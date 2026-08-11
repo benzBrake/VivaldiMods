@@ -26,9 +26,14 @@
     const MODS_DIRECTORY_NAME = 'chrome';
     const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
-    const MODS_SKIP_DIRS = ['deprecated'];
+    // 工具目录只提供可被显式引用的资源，不作为 Mod 自动注入。
+    const MODS_SKIP_DIRS = ['deprecated', 'utils'];
     const MODS_SKIP_LIST = ['userChrome.js'];
     const MODS_INTERNAL_IDS = ['userChromeJS/modsManager.ac.js'];
+    const MODS_ID_ALIASES = {
+        'styles/': 'userStyles/',
+        'legacy/': 'userStyles/legacy/'
+    };
     const MODS_STATE_KEY = 'USERCHROME_MODS_STATE';
     const MODS_STATE_VERSION = 1;
     const MODS_CHANGED_EVENT = 'userChrome.mods.changed';
@@ -247,12 +252,20 @@
         if (state.disabled && typeof state.disabled === 'object') {
             Object.keys(state.disabled).forEach(function (id) {
                 if (state.disabled[id] === true) {
-                    nextState.disabled[id] = true;
+                    nextState.disabled[migrateModId(id)] = true;
                 }
             });
         }
 
         return nextState;
+    }
+
+    function migrateModId(id) {
+        const normalizedId = String(id || '');
+        const alias = Object.keys(MODS_ID_ALIASES).find(function (prefix) {
+            return normalizedId.startsWith(prefix);
+        });
+        return alias ? MODS_ID_ALIASES[alias] + normalizedId.slice(alias.length) : normalizedId;
     }
 
     function normalizePath(path) {
@@ -2234,8 +2247,19 @@
         },
         async loadState() {
             try {
-                this.state = sanitizeState(await storageGetAsync(MODS_STATE_KEY));
+                const storedState = await storageGetAsync(MODS_STATE_KEY);
+                this.state = sanitizeState(storedState);
                 this.storageReady = true;
+
+                const hasMigratedIds = !!(storedState
+                    && storedState.disabled
+                    && typeof storedState.disabled === 'object'
+                    && Object.keys(storedState.disabled).some(function (id) {
+                        return storedState.disabled[id] === true && migrateModId(id) !== id;
+                    }));
+                if (hasMigratedIds) {
+                    await this.persistState();
+                }
             } catch (error) {
                 this.state = createDefaultState();
                 this.storageReady = false;
