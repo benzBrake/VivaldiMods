@@ -27,7 +27,7 @@
     const MODS_SCRIPT_EXTENSION = '.js';
     const MODS_STYLE_EXTENSION = '.css';
     // 工具目录只提供可被显式引用的资源，不作为 Mod 自动注入。
-    const MODS_SKIP_DIRS = ['deprecated', 'utils'];
+    const MODS_SKIP_DIRS = ['utils'];
     const MODS_SKIP_LIST = ['userChrome.js'];
     const MODS_INTERNAL_IDS = ['userChromeJS/modsManager.ac.js'];
     const MODS_ID_ALIASES = {

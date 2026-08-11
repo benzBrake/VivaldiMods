@@ -10,7 +10,7 @@ Vivaldi 的 UC Loader（UC 环境），用于载入 `.css` 和 `.ac.js`。我出
 
 ### 目录结构
 
-- `chrome/userStyles/`：Vivaldi UI 样式；`legacy/` 为仿 Firefox 外观的样式，`deprecated/` 为废弃样式。
+- `chrome/userStyles/`：Vivaldi UI 样式；`legacy/` 为仿 Firefox 外观的样式。
 - `chrome/userChromeJS/`：Vivaldi UI 行为脚本，默认使用 `.ac.js` 后缀。
 - `chrome/utils/`：供 Loader 或 Mod 显式引用的工具资源，不会被自动注入。
 - `chrome/userChrome.js`：唯一入口 Loader 和公共 API，不作为 Mod 重复加载。

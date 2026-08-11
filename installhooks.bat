@@ -213,7 +213,7 @@ else {
         [System.IO.File]::WriteAllLines((join-path $dstdir "window.html"), $outhtml, $encoding)
 
         Write-Host "Copying files"
-        $excludedDirectories = @("deprecated", "test")
+        $excludedDirectories = @("test")
         $sourceRoot = $srcdir
         if (-Not $sourceRoot.EndsWith([string][IO.Path]::DirectorySeparatorChar)) {
             $sourceRoot += [IO.Path]::DirectorySeparatorChar

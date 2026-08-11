@@ -9,10 +9,3 @@
 | appbutton_orange.css  | Vivaldi 按钮仿火狐橙        |
 | fx_boomark_folder.css | 书签文件夹改用 Firefox 同款 |
 | fx_like_buttons.css   | 按钮图标仿 Firefox          |
-
-## Deprecated
-
-| 文件名           | 说明                     |
-| ---------------- | ------------------------ |
-| floating_tabs.css | 已废弃的浮动标签页样式 |
-

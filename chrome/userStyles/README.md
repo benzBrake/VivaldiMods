@@ -1,6 +1,6 @@
 # userStyles
 
-存放直接修改 Vivaldi 内置界面的 UserStyle。普通样式放在本目录，仿 Firefox 外观的兼容样式放在 `legacy/`，废弃内容放在 `deprecated/`。
+存放直接修改 Vivaldi 内置界面的 UserStyle。普通样式放在本目录，仿 Firefox 外观的兼容样式放在 `legacy/`。
 
 ## 文件说明
 
@@ -21,11 +21,3 @@
 | appbutton_orange.css  | Vivaldi 按钮仿 Firefox 橙色 |
 | fx_boomark_folder.css | 书签文件夹改用 Firefox 同款 |
 | fx_like_buttons.css   | 按钮图标仿 Firefox          |
-
-## Deprecated
-
-| 文件名                                                 | 说明               |
-| --------------------------------------------------- | ---------------- |
-| alt_to_show_menubar.css                             | 按下 Alt 显示横向菜单         |
-| automate_sd_bookmark_bar.css                        | 在非新标签页隐藏书签工具栏    |
-| remove_tabbar_padding_top_in_normal_window_size.css | 移除非最大化窗口标签栏上边的空间 |
