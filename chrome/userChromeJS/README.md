@@ -61,9 +61,9 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 // stopObserving();
 ```
 
-### `window.userChrome_js.alert(message, options?)`
+### `window.VAlert.show(message, options?)`
 
-在浏览器右下角显示非阻塞通知。
+`VAlert` 由 `chrome/utils/alert.ac.js` 提供，并在普通 Mod 注入前加载。在浏览器右下角显示非阻塞通知。
 
 - `message`: 通知正文
 - `options.type`: `info | success | warn | error`
@@ -75,14 +75,14 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 示例：
 
 ```js
-userChrome_js.alert('设置已保存');
+VAlert.show('设置已保存');
 
-userChrome_js.alert('需要重启 Vivaldi 后生效', {
+VAlert.show('需要重启 Vivaldi 后生效', {
     type: 'warn',
     duration: 5000
 });
 
-userChrome_js.alert('点击打开 Mod 管理器', {
+VAlert.show('点击打开 Mod 管理器', {
     title: '提示',
     onClick(event, notification) {
         console.log(notification.id);
@@ -226,7 +226,7 @@ const button = userChrome_js.createElement('button', {
     type: 'button',
     innerText: '点击',
     onclick() {
-        userChrome_js.alert('按钮已点击');
+        VAlert.show('按钮已点击');
     }
 });
 ```

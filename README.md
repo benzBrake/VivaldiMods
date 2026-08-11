@@ -12,7 +12,7 @@ Vivaldi 的 UC Loader（UC 环境），用于载入 `.css` 和 `.ac.js`。我出
 
 - `chrome/userStyles/`：Vivaldi UI 样式；`legacy/` 为仿 Firefox 外观的样式。
 - `chrome/userChromeJS/`：Vivaldi UI 行为脚本，默认使用 `.ac.js` 后缀。
-- `chrome/utils/`：供 Loader 或 Mod 显式引用的工具资源，不会被自动注入。
+- `chrome/utils/`：由 Loader 在普通 Mod 前优先显式加载的工具资源，不会作为 Mod 自动注入。
 - `chrome/userChrome.js`：唯一入口 Loader 和公共 API，不作为 Mod 重复加载。
 
 ### 安装方法
@@ -64,17 +64,17 @@ Vivaldi 的 UC Loader（UC 环境），用于载入 `.css` 和 `.ac.js`。我出
 
 ## userChrome.js
 
-userChrome.js 提供了额外的`$`函数，操作 DOM 可以方便一点，同时也内置了一个右下角通知 API：
+userChrome.js 提供了额外的`$`函数，操作 DOM 可以方便一点；右下角通知由优先加载的 `VAlert` 工具提供：
 
 ```js
-userChrome_js.alert('设置已保存');
+VAlert.show('设置已保存');
 
-userChrome_js.alert('需要重启 Vivaldi 才会生效', {
+VAlert.show('需要重启 Vivaldi 才会生效', {
     type: 'warn',
     duration: 5000
 });
 
-userChrome_js.alert('点击打开 Mod 管理器', {
+VAlert.show('点击打开 Mod 管理器', {
     title: '提示',
     onClick(event, notification) {
         console.log('notification clicked', notification.id);

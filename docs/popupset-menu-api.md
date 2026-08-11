@@ -294,7 +294,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
                     label: '显示测试通知',
                     shortcut: 'Enter',
                     onSelect() {
-                        userChrome_js.alert('菜单项已触发。', { type: 'success' });
+                        VAlert.show('菜单项已触发。', { type: 'success' });
                     }
                 },
                 {
@@ -317,7 +317,7 @@ const popup = userChrome_js.menu.getPopup('menu-test-popup');
                             id: 'devtools',
                             label: '打开 DevTools',
                             onSelect() {
-                                userChrome_js.alert('这里可以接入 DevTools 按钮逻辑。');
+                                VAlert.show('这里可以接入 DevTools 按钮逻辑。');
                             }
                         },
                         {
