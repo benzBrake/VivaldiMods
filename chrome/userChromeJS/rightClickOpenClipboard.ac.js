@@ -24,10 +24,12 @@
     function showError(message, error) {
         console.warn('[rightClickOpenClipboard]', message, error || '');
         const detail = error && error.message ? ' ' + error.message : '';
-        userChrome_js.alert(message + detail, {
-            type: 'warn',
-            duration: 5000
-        });
+        if (window.VAlert && typeof window.VAlert.show === 'function') {
+            window.VAlert.show(message + detail, {
+                type: 'warn',
+                duration: 5000
+            });
+        }
     }
 
     // Vivaldi 的 UI 自身通过 paste 事件读取剪贴板，而不是 Clipboard API。

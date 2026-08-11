@@ -22,8 +22,8 @@
     };
 
     function notify(message, type) {
-        if (window.userChrome_js && typeof window.userChrome_js.alert === 'function') {
-            window.userChrome_js.alert(message, { type: type || 'info' });
+        if (window.VAlert && typeof window.VAlert.show === 'function') {
+            window.VAlert.show(message, { type: type || 'info' });
         }
     }
 

@@ -308,11 +308,10 @@
     }
 
     function notify(message, options) {
-        const api = getManagerApi();
-        if (!api || typeof api.alert !== 'function' || !message) {
+        if (!window.VAlert || typeof window.VAlert.show !== 'function' || !message) {
             return;
         }
-        api.alert(message, options);
+        window.VAlert.show(message, options);
     }
 
     function getVisibleMods() {

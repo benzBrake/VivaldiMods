@@ -199,9 +199,9 @@
     }
 
     function notify (message, type) {
-        const alerts = window.userChrome_js && window.userChrome_js.alert;
-        if (typeof alerts === 'function') {
-            alerts.call(window.userChrome_js, message, { type: type || 'info' });
+        const alert = window.VAlert && window.VAlert.show;
+        if (typeof alert === 'function') {
+            alert(message, { type: type || 'info' });
         } else {
             warn(message);
         }
