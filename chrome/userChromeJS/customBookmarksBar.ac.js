@@ -1848,7 +1848,7 @@
     }
 
     function createFolderMenuItems (folder) {
-        return [
+        const items = [
             {
                 id: getMenuItemId('add-bookmark-', folder),
                 label: '添加书签到此处',
@@ -1859,6 +1859,21 @@
             { type: 'separator' },
             ...createBookmarkMenuItems(folder.children)
         ];
+
+        if (collectBookmarkUrls(folder).length) {
+            items.push(
+                { type: 'separator' },
+                {
+                    id: getMenuItemId('open-all-', folder),
+                    label: '全部打开',
+                    onSelect: function () {
+                        return openNodeInMode(folder, 'new-tab');
+                    }
+                }
+            );
+        }
+
+        return items;
     }
 
     function openBookmarkPopupSubmenu (element) {
