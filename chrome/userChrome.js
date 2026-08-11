@@ -2143,11 +2143,18 @@
                 await this.cleanupState();
 
                 waitForCondition(function () {
-                    return document.head && document.body;
+                    return document.head;
                 }, function () {
-                    window.userChrome_js.injectMods().catch(function (error) {
-                        console.error('[userChrome.js] Mod injection failed.', error);
-                    });
+                    // CSS 只需 head，无需等待 body
+                    window.userChrome_js.injectStyleMods();
+                    // JS 需要 body 作为挂载容器
+                    waitForCondition(function () {
+                        return document.body;
+                    }, function () {
+                        window.userChrome_js.injectMods().catch(function (error) {
+                            console.error('[userChrome.js] Mod injection failed.', error);
+                        });
+                    }, 300);
                 }, 300);
             } catch (error) {
                 console.error('[userChrome.js] Initialization failed.', error);
@@ -2279,6 +2286,13 @@
                 return false;
             }
         },
+        injectStyleMods() {
+            this.styles.forEach((mod) => {
+                if (mod.enabled) {
+                    this.enableStyleMod(mod);
+                }
+            });
+        },
         injectMods() {
             if (this.injectionPromise) {
                 return this.injectionPromise;
@@ -2295,13 +2309,6 @@
                 console.warn('[userChrome.js] Injection container is unavailable.');
                 return;
             }
-
-            this.styles.forEach((mod) => {
-                if (!mod.enabled) {
-                    return;
-                }
-                this.enableStyleMod(mod);
-            });
 
             for (const mod of this.scripts) {
                 await this.enableScriptMod(mod, container);
