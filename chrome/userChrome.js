@@ -3,9 +3,14 @@
 // @description     Vivaldi Mods Loader
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.2.0
+// @version         0.2.6
 // @charset         UTF-8
 // @homepageURL     https://github.com/benzBrake/VivaldiMods
+// @note            20260806 增加全局 modal API
+// @note            20260725 修复长菜单分隔线收缩并统一使用 border-bottom 绘制
+// @note            20260724 菜单标签增加 Windows 风格助记键语法和按键分发
+// @note            20260724 收紧菜单项间距并禁止菜单横向滚动
+// @note            20260723 菜单项增加右键回调、自定义样式类和可恢复叠菜单
 // @note            20260722 增加常驻 popup 注册与静态级联子菜单 API
 // @note            20260717 增加自绘弹出菜单 menu API
 // @note            20260414 增加全局通知 alert API
@@ -34,6 +39,8 @@
     const MENU_STYLE_ID = 'userchrome-menu-style';
     const MENU_ROOT_ID = 'userchrome-menu-root';
     const MENU_VIEWPORT_MARGIN = 8;
+    const MODAL_STYLE_ID = 'userchrome-modal-style';
+    const MODAL_ID = 'userchrome-modal';
     const delegatedEventListeners = new WeakMap();
 
     function addDelegatedEventListener(element, event, selector, handler, listener) {
@@ -541,7 +548,8 @@
                     max-width: min(360px, calc(100vw - ${MENU_VIEWPORT_MARGIN * 2}px));
                     max-height: min(480px, calc(100vh - ${MENU_VIEWPORT_MARGIN * 2}px));
                     padding: 4px;
-                    overflow: auto;
+                    overflow-x: hidden;
+                    overflow-y: auto;
                     border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
                     border-radius: 6px;
                     background: var(--colorBg, #fff);
@@ -559,9 +567,10 @@
                     grid-template-columns: 16px minmax(0, 1fr) auto 14px;
                     column-gap: 8px;
                     align-items: center;
+                    box-sizing: border-box;
                     width: 100%;
-                    min-height: 30px;
-                    padding: 5px 8px;
+                    min-height: 28px;
+                    padding: 3px 8px;
                     border: 0;
                     border-radius: 4px;
                     background: transparent;
@@ -592,11 +601,22 @@
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-check {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
                     width: 16px;
+                    height: 16px;
                     font-size: 14px;
                     font-weight: 700;
                     line-height: 1;
                     text-align: center;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-icon {
+                    display: block;
+                    width: 16px;
+                    height: 16px;
+                    object-fit: contain;
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-label {
@@ -604,6 +624,12 @@
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-accesskey {
+                    text-decoration: underline;
+                    text-decoration-thickness: 1px;
+                    text-underline-offset: 2px;
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-shortcut {
@@ -620,9 +646,20 @@
                 }
 
                 #${MENU_ROOT_ID} .userchrome-menu-separator {
-                    height: 1px;
-                    margin: 4px 6px;
-                    background: var(--colorBorder, rgba(0, 0, 0, 0.16));
+                    position: relative;
+                    flex: 0 0 9px;
+                    height: 9px;
+                    margin: 0 6px;
+                }
+
+                #${MENU_ROOT_ID} .userchrome-menu-separator::after {
+                    content: '';
+                    position: absolute;
+                    top: 4px;
+                    right: 0;
+                    left: 0;
+                    border-bottom: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.16));
+                    pointer-events: none;
                 }
             `;
             document.head.appendChild(style);
@@ -645,6 +682,75 @@
             return root;
         }
 
+        function normalizeClassName(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+            return value.split(/\s+/).filter(function (token) {
+                return /^[a-zA-Z_-][a-zA-Z0-9_-]*$/.test(token);
+            }).join(' ');
+        }
+
+        function parseMenuLabel(value) {
+            const localizedAccessKey = /\(&([a-zA-Z0-9])\)$/.exec(value);
+            if (localizedAccessKey) {
+                const label = value.slice(0, localizedAccessKey.index).replace(/&&/g, '&');
+                const accessKey = localizedAccessKey[1];
+                const displayLabel = label + '(' + accessKey + ')';
+                return {
+                    label: label,
+                    displayLabel: displayLabel,
+                    accessKey: accessKey.toLocaleUpperCase(),
+                    accessKeyIndex: label.length + 1
+                };
+            }
+
+            let displayLabel = '';
+            let accessKey = '';
+            let accessKeyIndex = -1;
+            for (let index = 0; index < value.length; index += 1) {
+                const character = value[index];
+                if (character !== '&') {
+                    displayLabel += character;
+                    continue;
+                }
+
+                const nextCharacter = value[index + 1];
+                if (nextCharacter === '&') {
+                    displayLabel += '&';
+                    index += 1;
+                } else if (!accessKey && /^[a-zA-Z0-9]$/.test(nextCharacter || '')) {
+                    accessKey = nextCharacter.toLocaleUpperCase();
+                    accessKeyIndex = displayLabel.length;
+                    displayLabel += nextCharacter;
+                    index += 1;
+                } else {
+                    displayLabel += character;
+                }
+            }
+
+            return {
+                label: displayLabel,
+                displayLabel: displayLabel,
+                accessKey: accessKey,
+                accessKeyIndex: accessKeyIndex
+            };
+        }
+
+        function renderMenuLabel(element, item) {
+            if (!item.accessKey || item.accessKeyIndex < 0) {
+                element.textContent = item.displayLabel;
+                return;
+            }
+
+            element.appendChild(document.createTextNode(item.displayLabel.slice(0, item.accessKeyIndex)));
+            const accessKey = document.createElement('span');
+            accessKey.className = 'userchrome-menu-accesskey';
+            accessKey.textContent = item.displayLabel[item.accessKeyIndex];
+            element.appendChild(accessKey);
+            element.appendChild(document.createTextNode(item.displayLabel.slice(item.accessKeyIndex + 1)));
+        }
+
         function normalizeItems(items, parentPath, allowEmpty) {
             if (!Array.isArray(items)) {
                 throw new TypeError('Menu items must be an array.');
@@ -656,13 +762,18 @@
                 }
 
                 if (item.type === 'separator') {
-                    return { type: 'separator' };
+                    return {
+                        id: typeof item.id === 'string' ? item.id : '',
+                        type: 'separator',
+                        onContextMenu: typeof item.onContextMenu === 'function' ? item.onContextMenu : null
+                    };
                 }
 
                 if (typeof item.label !== 'string') {
                     throw new TypeError('Menu item at index ' + index + ' requires a string label.');
                 }
 
+                const parsedLabel = parseMenuLabel(item.label);
                 const path = parentPath.concat(index);
                 const children = item.children === undefined
                     ? []
@@ -671,12 +782,17 @@
                 return {
                     id: typeof item.id === 'string' ? item.id : '',
                     type: item.type === 'checkbox' ? 'checkbox' : 'item',
-                    label: item.label,
+                    label: parsedLabel.label,
+                    displayLabel: parsedLabel.displayLabel,
+                    accessKey: parsedLabel.accessKey,
+                    accessKeyIndex: parsedLabel.accessKeyIndex,
                     checked: item.type === 'checkbox' && item.checked === true,
                     disabled: item.disabled === true,
+                    icon: typeof item.icon === 'string' ? item.icon : '',
                     shortcut: typeof item.shortcut === 'string' ? item.shortcut : '',
                     children: children,
-                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null
+                    onSelect: typeof item.onSelect === 'function' ? item.onSelect : null,
+                    onContextMenu: typeof item.onContextMenu === 'function' ? item.onContextMenu : null
                 };
             });
 
@@ -706,6 +822,7 @@
                 ariaLabel: typeof options.ariaLabel === 'string' && options.ariaLabel.trim()
                     ? options.ariaLabel.trim()
                     : '菜单',
+                className: normalizeClassName(options.className),
                 items: normalizeItems(options.items, [])
             };
         }
@@ -730,7 +847,8 @@
                 restoreFocus: options.restoreFocus instanceof HTMLElement
                     ? options.restoreFocus
                     : (hasAnchor ? options.anchor : null),
-                onClose: typeof options.onClose === 'function' ? options.onClose : null
+                onClose: typeof options.onClose === 'function' ? options.onClose : null,
+                preserveCurrent: options.preserveCurrent === true
             };
 
             if (requireItems) {
@@ -738,15 +856,17 @@
                     ? options.ariaLabel.trim()
                     : '菜单';
                 normalized.items = normalizeItems(options.items, []);
+                normalized.className = normalizeClassName(options.className);
             }
 
             return normalized;
         }
 
-        function createMenuEntry(id, ariaLabel, items, dynamic) {
+        function createMenuEntry(id, ariaLabel, className, items, dynamic) {
             const entry = {
                 id: id,
                 ariaLabel: ariaLabel,
+                className: className,
                 items: items,
                 dynamic: dynamic === true,
                 menus: [],
@@ -762,7 +882,9 @@
 
         function createMenuElement(entry, items, path, parentMenu, parentItem) {
             const menu = document.createElement('div');
-            menu.className = 'userchrome-menu' + (parentMenu ? ' userchrome-menu-submenu' : '');
+            menu.className = 'userchrome-menu'
+                + (parentMenu ? ' userchrome-menu-submenu' : '')
+                + (entry.className ? ' ' + entry.className : '');
             menu.setAttribute('role', 'menu');
             menu.setAttribute('aria-label', parentItem ? parentItem.item.label : entry.ariaLabel);
             menu.setAttribute('data-popup-id', entry.id);
@@ -786,6 +908,21 @@
                     const separator = document.createElement('div');
                     separator.className = 'userchrome-menu-separator';
                     separator.setAttribute('role', 'separator');
+                    const separatorEntry = {
+                        item: item,
+                        element: separator,
+                        menu: meta,
+                        submenu: null,
+                        index: index
+                    };
+                    if (item.onContextMenu) {
+                        separator.dataset.contextmenu = 'true';
+                        separator.addEventListener('contextmenu', function (event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            invokeContextMenu(state.current, separatorEntry, event);
+                        });
+                    }
                     menu.appendChild(separator);
                     return;
                 }
@@ -794,6 +931,8 @@
                 button.type = 'button';
                 button.className = 'userchrome-menu-item';
                 button.setAttribute('role', item.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem');
+                button.setAttribute('label', item.label);
+                button.setAttribute('aria-label', item.label);
                 button.tabIndex = -1;
                 button.disabled = item.disabled;
                 if (item.type === 'checkbox') {
@@ -806,10 +945,21 @@
                 const check = document.createElement('span');
                 check.className = 'userchrome-menu-check';
                 check.setAttribute('aria-hidden', 'true');
-                check.textContent = item.type === 'checkbox' && item.checked ? '✓' : '';
+                if (item.icon) {
+                    const icon = document.createElement('img');
+                    icon.className = 'userchrome-menu-icon';
+                    icon.alt = '';
+                    icon.src = item.icon;
+                    icon.addEventListener('error', function () {
+                        icon.remove();
+                    }, { once: true });
+                    check.appendChild(icon);
+                } else {
+                    check.textContent = item.type === 'checkbox' && item.checked ? '✓' : '';
+                }
                 const label = document.createElement('span');
                 label.className = 'userchrome-menu-label';
-                label.textContent = item.label;
+                renderMenuLabel(label, item);
                 const shortcut = document.createElement('span');
                 shortcut.className = 'userchrome-menu-shortcut';
                 shortcut.textContent = item.shortcut;
@@ -876,6 +1026,13 @@
                     }
                     invokeSelect(state.current, itemEntry, event);
                 });
+                if (item.onContextMenu) {
+                    button.addEventListener('contextmenu', function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        invokeContextMenu(state.current, itemEntry, event);
+                    });
+                }
 
                 menu.appendChild(button);
                 meta.itemElements.push(itemEntry);
@@ -987,6 +1144,54 @@
             }
         }
 
+        function getContextMenuPosition(event, element) {
+            const hasMousePosition = event
+                && Number.isFinite(event.clientX)
+                && Number.isFinite(event.clientY)
+                && (event.button === 2 || event.clientX !== 0 || event.clientY !== 0);
+            if (hasMousePosition) {
+                return { x: event.clientX, y: event.clientY };
+            }
+
+            const rect = element.getBoundingClientRect();
+            return {
+                x: Math.round(Math.min(rect.right, rect.left + 24)),
+                y: Math.round(rect.top + Math.min(rect.height, 24))
+            };
+        }
+
+        function invokeContextMenu(current, itemEntry, event, position) {
+            if (!current
+                || state.current !== current
+                || !itemEntry
+                || current.entry !== itemEntry.menu.entry
+                || itemEntry.item.disabled
+                || !itemEntry.item.onContextMenu) {
+                return;
+            }
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const callback = itemEntry.item.onContextMenu;
+            const contextPosition = position || getContextMenuPosition(event, itemEntry.element);
+            const selection = {
+                id: itemEntry.item.id,
+                event: event,
+                element: itemEntry.element,
+                position: contextPosition
+            };
+
+            try {
+                Promise.resolve(callback(selection)).catch(function (error) {
+                    console.error('[userChrome.menu] Item context callback failed.', error);
+                });
+            } catch (error) {
+                console.error('[userChrome.menu] Item context callback failed.', error);
+            }
+        }
+
         function positionMenu(menu, x, y) {
             if (!menu || !menu.element.isConnected) {
                 return;
@@ -1090,6 +1295,14 @@
                 return entry.element === document.activeElement;
             });
 
+            if ((event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))
+                && activeEntry
+                && activeEntry.item.onContextMenu) {
+                event.preventDefault();
+                invokeContextMenu(current, activeEntry, event, getContextMenuPosition(null, activeEntry.element));
+                return;
+            }
+
             if (event.key === 'Escape') {
                 event.preventDefault();
                 close('escape');
@@ -1127,6 +1340,33 @@
                 return;
             }
 
+            if (!event.ctrlKey
+                && !event.altKey
+                && !event.metaKey
+                && !event.isComposing
+                && event.key.length === 1) {
+                const accessKey = event.key.toLocaleUpperCase();
+                const matches = focusableItems.filter(function (entry) {
+                    return entry.item.accessKey === accessKey;
+                });
+                if (matches.length === 1) {
+                    event.preventDefault();
+                    matches[0].element.click();
+                    return;
+                }
+                if (matches.length > 1) {
+                    event.preventDefault();
+                    const activeMatchIndex = matches.findIndex(function (entry) {
+                        return entry.element === document.activeElement;
+                    });
+                    const nextMatch = matches[(activeMatchIndex + 1) % matches.length];
+                    closeSubmenusAfter(current, activeMenu);
+                    current.suppressFocusOpen = nextMatch;
+                    focusItem(activeMenu, focusableItems.indexOf(nextMatch));
+                    return;
+                }
+            }
+
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
                 focusItem(activeMenu, activeMenu.focusedIndex + 1);
@@ -1149,16 +1389,31 @@
             }
 
             const eventPath = typeof event.composedPath === 'function' ? event.composedPath() : null;
-            const isInside = current.chain.some(function (menu) {
-                return eventPath
-                    ? eventPath.includes(menu.element)
-                    : menu.element.contains(event.target);
-            });
-            if (isInside) {
+            let containingSession = current;
+            while (containingSession) {
+                const isInside = containingSession.chain.some(function (menu) {
+                    return eventPath
+                        ? eventPath.includes(menu.element)
+                        : menu.element.contains(event.target);
+                });
+                if (isInside) {
+                    break;
+                }
+                containingSession = containingSession.previous;
+            }
+
+            if (containingSession === current) {
                 return;
             }
 
-            close('outside', false);
+            if (!containingSession) {
+                closeAll('outside', false);
+                return;
+            }
+
+            while (state.current && state.current !== containingSession) {
+                close('outside', false);
+            }
         }
 
         function hideEntryMenus(entry) {
@@ -1175,38 +1430,189 @@
             });
         }
 
+        function deactivateSession(current) {
+            document.removeEventListener('keydown', handleKeydown, true);
+            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
+            window.removeEventListener('mousedown', handleOutsideInteraction, true);
+            if (!current) {
+                return;
+            }
+
+            window.removeEventListener('resize', current.reposition);
+            window.removeEventListener('scroll', current.reposition, true);
+            if (current.anchorObserver) {
+                current.anchorObserver.disconnect();
+                current.anchorObserver = null;
+            }
+            current.suspended = true;
+        }
+
+        function activateSession(current) {
+            state.current = current;
+            current.suspended = false;
+            document.addEventListener('keydown', handleKeydown, true);
+            // 在 window 捕获阶段监听，避免 Vivaldi UI 的 document 事件处理拦截菜单外点击。
+            window.addEventListener('pointerdown', handleOutsideInteraction, true);
+            // 兼容未派发 PointerEvent 的鼠标输入环境；重复事件会因菜单已关闭而被忽略。
+            window.addEventListener('mousedown', handleOutsideInteraction, true);
+            window.addEventListener('resize', current.reposition);
+            window.addEventListener('scroll', current.reposition, true);
+
+            if (current.options.anchor && typeof MutationObserver === 'function') {
+                current.anchorObserver = new MutationObserver(function () {
+                    if (state.current === current && !current.options.anchor.isConnected) {
+                        close('anchor-removed', false);
+                    }
+                });
+                current.anchorObserver.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+
+        function disposeSession(current) {
+            if (!current || current.closed) {
+                return false;
+            }
+
+            current.closed = true;
+            current.suspended = false;
+            hideEntryMenus(current.entry);
+            if (current.entry.dynamic) {
+                current.entry.element.remove();
+            }
+            return true;
+        }
+
+        function notifySessionClosed(current, reason) {
+            if (!current || !current.options.onClose) {
+                return;
+            }
+
+            try {
+                current.options.onClose(reason || 'close');
+            } catch (error) {
+                console.error('[userChrome.menu] Close callback failed.', error);
+            }
+        }
+
+        function canResumeSession(current) {
+            if (!current || current.closed || !current.entry.element.isConnected) {
+                return false;
+            }
+            if (!current.entry.dynamic && state.registry.get(current.entry.id) !== current.entry) {
+                return false;
+            }
+            return !current.options.anchor || current.options.anchor.isConnected;
+        }
+
+        function resumeSession(previous) {
+            let candidate = previous;
+            while (candidate) {
+                const next = candidate.previous;
+                if (canResumeSession(candidate)) {
+                    activateSession(candidate);
+                    positionChain(candidate);
+                    return candidate;
+                }
+
+                const closeReason = candidate.entry.element.isConnected
+                    && candidate.options.anchor
+                    && !candidate.options.anchor.isConnected
+                    ? 'anchor-removed'
+                    : 'unregister';
+                candidate.previous = null;
+                if (disposeSession(candidate)) {
+                    notifySessionClosed(candidate, closeReason);
+                }
+                candidate = next;
+            }
+
+            state.current = null;
+            return null;
+        }
+
         function close(reason, shouldRestoreFocus) {
             const current = state.current;
             if (!current) {
                 return;
             }
 
+            deactivateSession(current);
             state.current = null;
-            document.removeEventListener('keydown', handleKeydown, true);
-            window.removeEventListener('pointerdown', handleOutsideInteraction, true);
-            window.removeEventListener('mousedown', handleOutsideInteraction, true);
-            window.removeEventListener('resize', current.reposition);
-            window.removeEventListener('scroll', current.reposition, true);
-            if (current.anchorObserver) {
-                current.anchorObserver.disconnect();
-            }
-
-            hideEntryMenus(current.entry);
-            if (current.entry.dynamic) {
-                current.entry.element.remove();
-            }
+            const previous = current.previous;
+            current.previous = null;
+            disposeSession(current);
+            resumeSession(previous);
 
             if (shouldRestoreFocus !== false) {
                 restoreFocus(current);
             }
+            notifySessionClosed(current, reason);
+        }
 
-            if (current.options.onClose) {
-                try {
-                    current.options.onClose(reason || 'close');
-                } catch (error) {
-                    console.error('[userChrome.menu] Close callback failed.', error);
-                }
+        function closeAll(reason, shouldRestoreFocus) {
+            const top = state.current;
+            if (!top) {
+                return;
             }
+
+            deactivateSession(top);
+            state.current = null;
+            const closedSessions = [];
+            let current = top;
+            while (current) {
+                const previous = current.previous;
+                current.previous = null;
+                if (disposeSession(current)) {
+                    closedSessions.push(current);
+                }
+                current = previous;
+            }
+
+            if (shouldRestoreFocus !== false) {
+                restoreFocus(top);
+            }
+            closedSessions.forEach(function (session) {
+                notifySessionClosed(session, reason);
+            });
+        }
+
+        function closeSession(target, reason, shouldRestoreFocus) {
+            if (!target || target.closed) {
+                return false;
+            }
+            if (state.current === target) {
+                close(reason, shouldRestoreFocus);
+                return true;
+            }
+
+            let child = state.current;
+            while (child && child.previous !== target) {
+                child = child.previous;
+            }
+            if (!child) {
+                return false;
+            }
+
+            child.previous = target.previous;
+            target.previous = null;
+            if (disposeSession(target)) {
+                notifySessionClosed(target, reason);
+            }
+            return true;
+        }
+
+        function closeEntrySession(entry, reason, shouldRestoreFocus) {
+            let current = state.current;
+            while (current) {
+                if (current.entry === entry) {
+                    return closeSession(current, reason, shouldRestoreFocus);
+                }
+                current = current.previous;
+            }
+            return false;
         }
 
         function openEntry(entry, options) {
@@ -1215,10 +1621,15 @@
                 return null;
             }
 
-            close('replace', false);
-            if (!entry.element.isConnected) {
-                root.appendChild(entry.element);
+            let previous = null;
+            if (options.preserveCurrent && state.current && state.current.entry !== entry) {
+                previous = state.current;
+                deactivateSession(previous);
+                state.current = null;
+            } else {
+                closeAll('replace', false);
             }
+            root.appendChild(entry.element);
             hideEntryMenus(entry);
 
             const current = {
@@ -1228,36 +1639,17 @@
                 activeMenu: entry.menus[0],
                 suppressFocusOpen: null,
                 reposition: null,
-                anchorObserver: null
+                anchorObserver: null,
+                previous: previous,
+                suspended: false,
+                closed: false
             };
-            state.current = current;
             entry.element.hidden = false;
 
             current.reposition = function () {
                 positionChain(current);
             };
-            if (options.anchor && typeof MutationObserver === 'function') {
-                current.anchorObserver = new MutationObserver(function () {
-                    if (state.current !== current) {
-                        current.anchorObserver.disconnect();
-                        return;
-                    }
-                    if (!options.anchor.isConnected) {
-                        close('anchor-removed', false);
-                    }
-                });
-                current.anchorObserver.observe(document.documentElement, {
-                    childList: true,
-                    subtree: true
-                });
-            }
-            document.addEventListener('keydown', handleKeydown, true);
-            // 在 window 捕获阶段监听，避免 Vivaldi UI 的 document 事件处理拦截菜单外点击。
-            window.addEventListener('pointerdown', handleOutsideInteraction, true);
-            // 兼容未派发 PointerEvent 的鼠标输入环境；重复事件会因菜单已关闭而被忽略。
-            window.addEventListener('mousedown', handleOutsideInteraction, true);
-            window.addEventListener('resize', current.reposition);
-            window.addEventListener('scroll', current.reposition, true);
+            activateSession(current);
             positionChain(current);
 
             requestAnimationFrame(function () {
@@ -1268,9 +1660,7 @@
 
             return {
                 close: function (reason) {
-                    if (state.current === current) {
-                        close(reason || 'close');
-                    }
+                    closeSession(current, reason || 'close', true);
                 }
             };
         }
@@ -1286,9 +1676,7 @@
                     return openEntry(entry, normalizeOpenOptions(options, false));
                 },
                 close: function (reason) {
-                    if (state.current && state.current.entry === entry) {
-                        close(reason || 'close');
-                    }
+                    closeEntrySession(entry, reason || 'close', true);
                 },
                 unregister: function () {
                     if (state.registry.get(entry.id) === entry) {
@@ -1315,7 +1703,13 @@
                     unregister(normalized.id, 'replace');
                 }
 
-                const entry = createMenuEntry(normalized.id, normalized.ariaLabel, normalized.items, false);
+                const entry = createMenuEntry(
+                    normalized.id,
+                    normalized.ariaLabel,
+                    normalized.className,
+                    normalized.items,
+                    false
+                );
                 root.appendChild(entry.element);
                 entry.controller = createController(entry);
                 state.registry.set(entry.id, entry);
@@ -1332,9 +1726,7 @@
             }
 
             state.registry.delete(id);
-            if (state.current && state.current.entry === entry) {
-                close(reason || 'unregister', false);
-            }
+            closeEntrySession(entry, reason || 'unregister', false);
             entry.element.remove();
             return true;
         }
@@ -1350,7 +1742,13 @@
         function open(options) {
             const normalized = normalizeOpenOptions(options, true);
             const id = '__dynamic-menu-' + (++state.dynamicCounter);
-            const entry = createMenuEntry(id, normalized.ariaLabel, normalized.items, true);
+            const entry = createMenuEntry(
+                id,
+                normalized.ariaLabel,
+                normalized.className,
+                normalized.items,
+                true
+            );
             return openEntry(entry, normalized);
         }
 
@@ -1372,6 +1770,347 @@
         };
     }
 
+    function normalizeModalDimension(value, fallback, minimum) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return Math.max(minimum, Math.round(value)) + 'px';
+        }
+        if (typeof value === 'string' && /^(?:\d+(?:\.\d+)?px|\d+(?:\.\d+)?(?:vw|vh)|min\([^;{}]+\)|calc\([^;{}]+\))$/.test(value.trim())) {
+            return value.trim();
+        }
+        return fallback;
+    }
+
+    function normalizeModalOptions(options) {
+        const source = options && typeof options === 'object' ? options : {};
+        const defaultSize = source.defaultSize && typeof source.defaultSize === 'object'
+            ? source.defaultSize
+            : {};
+        const className = typeof source.className === 'string'
+            ? source.className.split(/\s+/).filter((value) => /^[a-zA-Z0-9_-]+$/.test(value)).join(' ')
+            : '';
+        return {
+            title: typeof source.title === 'string' ? source.title : '',
+            message: typeof source.message === 'string' ? source.message : '',
+            content: source.content instanceof HTMLElement ? source.content : null,
+            confirmLabel: typeof source.confirmLabel === 'string' && source.confirmLabel ? source.confirmLabel : '确定',
+            cancelLabel: typeof source.cancelLabel === 'string' && source.cancelLabel ? source.cancelLabel : '取消',
+            showClose: source.showClose !== false,
+            danger: source.danger === true,
+            className,
+            width: normalizeModalDimension(defaultSize.width, 'min(480px, calc(100vw - 32px))', 240),
+            height: normalizeModalDimension(defaultSize.height, 'auto', 160),
+            resizable: source.resizable === true,
+            backdropBlur: Number.isFinite(source.backdropBlur) ? Math.max(0, source.backdropBlur) : 2,
+            restoreFocus: source.restoreFocus instanceof HTMLElement ? source.restoreFocus : null,
+            validate: typeof source.validate === 'function' ? source.validate : null
+        };
+    }
+
+    function createModalApi() {
+        const state = {
+            dialog: null,
+            active: null
+        };
+
+        function ensureStyle() {
+            if (document.getElementById(MODAL_STYLE_ID) || !document.head) {
+                return !!document.getElementById(MODAL_STYLE_ID);
+            }
+            const style = document.createElement('style');
+            style.id = MODAL_STYLE_ID;
+            style.textContent = `
+                #${MODAL_ID} {
+                    position: fixed;
+                    z-index: 2147483647;
+                    box-sizing: border-box;
+                    width: var(--userchrome-modal-width);
+                    height: var(--userchrome-modal-height);
+                    max-width: calc(100vw - 32px);
+                    max-height: calc(100vh - 32px);
+                    min-width: 240px;
+                    min-height: 160px;
+                    padding: 0;
+                    overflow: hidden;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
+                    border-radius: 12px;
+                    background: var(--colorBg, #fff);
+                    color: var(--colorFg, #222);
+                    box-shadow: 0 22px 64px rgba(0, 0, 0, 0.34);
+                    font: inherit;
+                }
+                #${MODAL_ID}.userchrome-modal-auto-size {
+                    inset: auto;
+                    top: 50%;
+                    right: auto;
+                    bottom: auto;
+                    left: 50%;
+                    margin: 0;
+                    transform: translate(-50%, -50%);
+                }
+                #${MODAL_ID}.userchrome-modal-resizable { resize: both; }
+                #${MODAL_ID}::backdrop {
+                    background: rgba(0, 0, 0, 0.38);
+                    backdrop-filter: blur(var(--userchrome-modal-backdrop-blur));
+                }
+                #${MODAL_ID} .userchrome-modal-form {
+                    display: flex;
+                    flex-direction: column;
+                    width: 100%;
+                    height: 100%;
+                    max-height: inherit;
+                }
+                #${MODAL_ID} .userchrome-modal-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                    flex: 0 0 auto;
+                    padding: 18px 20px 12px;
+                }
+                #${MODAL_ID} .userchrome-modal-heading { min-width: 0; flex: 1 1 auto; }
+                #${MODAL_ID} .userchrome-modal-title {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 600;
+                    line-height: 1.3;
+                }
+                #${MODAL_ID} .userchrome-modal-message {
+                    margin: 8px 0 0;
+                    color: var(--colorFgFaded, rgba(34, 34, 34, 0.68));
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+                #${MODAL_ID} .userchrome-modal-close {
+                    flex: 0 0 auto;
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    border: 0;
+                    border-radius: 999px;
+                    background: transparent;
+                    color: inherit;
+                    font-size: 20px;
+                    line-height: 1;
+                    cursor: pointer;
+                }
+                #${MODAL_ID} .userchrome-modal-close:hover,
+                #${MODAL_ID} .userchrome-modal-close:focus-visible { background: var(--colorBgAlphaHeavier, rgba(0, 0, 0, 0.08)); outline: none; }
+                #${MODAL_ID} .userchrome-modal-content {
+                    flex: 1 1 auto;
+                    min-height: 0;
+                    overflow: auto;
+                    padding: 8px 20px 20px;
+                }
+                #${MODAL_ID} .userchrome-modal-error {
+                    flex: 0 0 auto;
+                    min-height: 18px;
+                    padding: 0 20px 4px;
+                    color: var(--colorErrorBg, #c42b1c);
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+                #${MODAL_ID} .userchrome-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    flex: 0 0 auto;
+                    padding: 14px 20px 18px;
+                    border-top: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.14));
+                    background: var(--colorBgAlphaHeavy, var(--colorBg, #fff));
+                }
+                #${MODAL_ID} .userchrome-modal-actions button {
+                    min-width: 78px;
+                    min-height: 34px;
+                    padding: 6px 14px;
+                    border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.2));
+                    border-radius: 6px;
+                    background: var(--colorBgIntense, var(--colorBg, #fff));
+                    color: var(--colorFg, #222);
+                    font: inherit;
+                    cursor: pointer;
+                }
+                #${MODAL_ID} .userchrome-modal-actions .primary {
+                    border-color: var(--colorAccentBg, #006dcc);
+                    background: var(--colorAccentBg, #006dcc);
+                    color: var(--colorAccentFg, #fff);
+                }
+                #${MODAL_ID} .userchrome-modal-actions .danger {
+                    border-color: var(--colorErrorBg, #c42b1c);
+                    background: var(--colorErrorBg, #c42b1c);
+                    color: var(--colorErrorFg, #fff);
+                }
+            `;
+            document.head.appendChild(style);
+            return true;
+        }
+
+        function ensureDialog() {
+            if (state.dialog && state.dialog.isConnected) {
+                return state.dialog;
+            }
+            if (!ensureStyle() || !document.body) {
+                return null;
+            }
+            const existing = document.getElementById(MODAL_ID);
+            if (existing) existing.remove();
+            state.dialog = document.createElement('dialog');
+            state.dialog.id = MODAL_ID;
+            document.body.appendChild(state.dialog);
+            return state.dialog;
+        }
+
+        function settle(active, value) {
+            if (!active || active.settled) return;
+            active.settled = true;
+            active.resolve(value);
+            if (active.options.restoreFocus && active.options.restoreFocus.isConnected) {
+                active.options.restoreFocus.focus();
+            }
+            if (state.active === active) state.active = null;
+        }
+
+        function close(reason) {
+            const active = state.active;
+            if (!active) return false;
+            const dialog = active.dialog;
+            settle(active, null);
+            if (dialog.open) dialog.close(reason || 'close');
+            return true;
+        }
+
+        function open(options) {
+            const normalized = normalizeModalOptions(options);
+            if (!normalized.content) {
+                throw new TypeError('Modal content must be an HTMLElement.');
+            }
+            const dialog = ensureDialog();
+            if (!dialog) return Promise.resolve(null);
+            close('replace');
+
+            dialog.className = normalized.className;
+            dialog.classList.toggle('userchrome-modal-auto-size', normalized.height === 'auto');
+            dialog.classList.toggle('userchrome-modal-resizable', normalized.resizable);
+            dialog.style.setProperty('--userchrome-modal-width', normalized.width);
+            dialog.style.setProperty('--userchrome-modal-height', normalized.height);
+            dialog.style.setProperty('--userchrome-modal-backdrop-blur', normalized.backdropBlur + 'px');
+
+            const form = document.createElement('form');
+            form.className = 'userchrome-modal-form';
+            form.method = 'dialog';
+            const header = document.createElement('header');
+            header.className = 'userchrome-modal-header';
+            const heading = document.createElement('div');
+            heading.className = 'userchrome-modal-heading';
+            if (normalized.title) {
+                const title = document.createElement('h2');
+                title.className = 'userchrome-modal-title';
+                title.textContent = normalized.title;
+                heading.appendChild(title);
+            }
+            if (normalized.message) {
+                const message = document.createElement('p');
+                message.className = 'userchrome-modal-message';
+                message.textContent = normalized.message;
+                heading.appendChild(message);
+            }
+            header.appendChild(heading);
+            if (normalized.showClose) {
+                const closeButton = document.createElement('button');
+                closeButton.type = 'button';
+                closeButton.className = 'userchrome-modal-close';
+                closeButton.setAttribute('aria-label', '关闭');
+                closeButton.textContent = '×';
+                closeButton.addEventListener('click', () => close('close'));
+                header.appendChild(closeButton);
+            }
+            form.appendChild(header);
+            const content = document.createElement('div');
+            content.className = 'userchrome-modal-content';
+            content.appendChild(normalized.content);
+            form.appendChild(content);
+            const error = document.createElement('div');
+            error.className = 'userchrome-modal-error';
+            error.setAttribute('role', 'alert');
+            form.appendChild(error);
+            const actions = document.createElement('footer');
+            actions.className = 'userchrome-modal-actions';
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = normalized.cancelLabel;
+            cancelButton.addEventListener('click', () => close('cancel'));
+            const confirmButton = document.createElement('button');
+            confirmButton.type = 'submit';
+            confirmButton.className = normalized.danger ? 'danger' : 'primary';
+            confirmButton.textContent = normalized.confirmLabel;
+            actions.append(cancelButton, confirmButton);
+            form.appendChild(actions);
+            dialog.replaceChildren(form);
+
+            return new Promise((resolve) => {
+                const active = { dialog, options: normalized, resolve, settled: false };
+                state.active = active;
+                let pointerDownTarget = null;
+                const onCancel = (event) => {
+                    event.preventDefault();
+                    close('cancel');
+                };
+                const onPointerDown = (event) => {
+                    pointerDownTarget = event.target;
+                };
+                const onClick = (event) => {
+                    const startedInside = pointerDownTarget
+                        && pointerDownTarget !== dialog
+                        && dialog.contains(pointerDownTarget);
+                    if (event.target === dialog && !startedInside) close('backdrop');
+                    pointerDownTarget = null;
+                };
+                const onClose = () => {
+                    settle(active, null);
+                    cleanup();
+                };
+                const cleanup = () => {
+                    dialog.removeEventListener('cancel', onCancel);
+                    dialog.removeEventListener('pointerdown', onPointerDown, true);
+                    dialog.removeEventListener('click', onClick);
+                    dialog.removeEventListener('close', onClose);
+                    if (state.active === active) state.active = null;
+                };
+                dialog.addEventListener('cancel', onCancel);
+                dialog.addEventListener('pointerdown', onPointerDown, true);
+                dialog.addEventListener('click', onClick);
+                dialog.addEventListener('close', onClose);
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    if (active.settled) return;
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
+                    }
+                    const formData = new FormData(form);
+                    let validation = '';
+                    try {
+                        validation = normalized.validate ? await normalized.validate(formData, form) : '';
+                    } catch (validationError) {
+                        console.error('[userChrome.js] Modal validation failed.', validationError);
+                        validation = '输入内容无效，请检查后重试。';
+                    }
+                    if (validation) {
+                        error.textContent = String(validation);
+                        return;
+                    }
+                    settle(active, formData);
+                    if (dialog.open) dialog.close('submit');
+                });
+                dialog.showModal();
+                requestAnimationFrame(() => {
+                    const first = form.querySelector('input, select, textarea, button');
+                    if (first) first.focus();
+                });
+            });
+        }
+
+        return { open, close };
+    }
+
     window.userChrome_js = {
         scripts: [],
         styles: [],
@@ -1385,6 +2124,7 @@
         alertQueue: [],
         alertCounter: 0,
         menu: createMenuApi(),
+        modal: createModalApi(),
         state: createDefaultState(),
         storageReady: true,
         async init() {

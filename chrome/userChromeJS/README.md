@@ -1,18 +1,17 @@
 # 文件说明
 
-| 文件名                      | 作用                                       |
-| --------------------------- | ------------------------------------------ |
-| activateTabOnHover.ac.js    | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏） |
-| chromeDevtools_Button.ac.js | 侧边栏 DevTools 按钮：优先连 `localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
-| global-media-controls.ac.js | 侧边栏增加一个全局播放控制面板             |
-| test/menuTest_Button.ac.js  | 侧边栏 Popupset 菜单测试按钮，覆盖注册、级联子菜单和锚定/坐标定位；`test` 目录不会由安装脚本复制 |
-| modsManager.ac.js           | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层 |
-| rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容 |
-| rightClickTabToClose.ac.js  | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑 |
-| Toggle_Bookmarksbar.ac.js   | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏） |
-| undoCloseTab_Button.ac.js   | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建 |
-
-`rightClickOpenClipboard.ac.js` 面向 Vivaldi 8.1 的 `.button-toolbar.newtab` DOM 结构，使用 `paste` 事件读取剪贴板，并依赖 `chrome.tabs`、`vivaldi.searchEngines` 及标签 `vivExtData` 创建和导航标签页。脚本会保留当前工作区；从标签堆叠区域新增时还会继承当前堆叠归属。
+| 文件名                        | 作用                                                                                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| activateTabOnHover.ac.js      | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏）                                                                                 |
+| chromeDevtools_Button.ac.js   | 侧边栏 DevTools 按钮：优先连`localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
+| global-media-controls.ac.js   | 侧边栏增加一个全局播放控制面板                                                                                                      |
+| test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、助记键、级联子菜单、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制                       |
+| modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
+| rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
+| rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
+| customBookmarksBar.ac.js      | 在原生书签栏下方增加自绘书签栏；按 Vivaldi 8.1 的显示与排序偏好渲染书签项，使用隔离的 `userchrome-custom-bookmarks-bar-*` class 复刻原生样式，并提供 URL 新建书签、原生/自绘书签跨层级拖放、含“全部打开”的文件夹 Popupset、溢出菜单、设置弹窗及带助记键的项目/空白区域右键操作 |
+| Toggle_Bookmarksbar.ac.js     | 双击地址栏显示/隐藏书签栏（兼容 Vivaldi 8.1 的动态地址栏）                                                                          |
+| undoCloseTab_Button.ac.js     | 在标签栏右侧工具栏增加撤销关闭标签页按钮，适配新版标签栏容器与异步重建                                                              |
 
 ## userChrome.js 公共 API
 
@@ -92,13 +91,41 @@ userChrome_js.alert('点击打开 Mod 管理器', {
 });
 ```
 
+### `window.userChrome_js.modal`
+
+全局单例 modal，用于 Vivaldi 内置界面的表单和确认操作。调用 `modal.open(options)` 返回 `Promise<FormData|null>`：点击确定返回原生 `FormData`，点击取消、标题栏关闭、遮罩、按 `Escape` 或被新的 modal 替换时返回 `null`。`modal.close(reason?)` 主动关闭当前实例。
+
+```js
+const content = userChrome_js.createElement('div');
+content.appendChild(userChrome_js.createElement('input', {
+    name: 'value',
+    required: true
+}));
+
+const result = await userChrome_js.modal.open({
+    title: '示例设置',
+    content,
+    defaultSize: { width: 480, height: 320 },
+    resizable: false,
+    backdropBlur: 2,
+    validate(formData) {
+        return formData.get('value') ? '' : '值不能为空。';
+    }
+});
+if (result) {
+    console.log(result.get('value'));
+}
+```
+
+支持 `title`、`message`、`content`（必须是 `HTMLElement`）、`confirmLabel`、`cancelLabel`、`showClose`、`danger`、`defaultSize.width/height`、`resizable`、`backdropBlur`、`restoreFocus` 和异步 `validate(formData, form)`。默认尺寸为宽度 `480px`、高度自动；默认不可调整大小，背景模糊 `2px`，显示关闭按钮。
+
 ### `window.userChrome_js.menu`
 
 菜单组件使用标准 DOM 与 WAI-ARIA 语义实现，交互模型参考 Firefox 的菜单行为，但不依赖 Firefox 的 XUL `menu`、`menuitem` 或 `menupopup` 标签，因此可直接用于 Vivaldi 内置界面。
 
 #### `menu.register(options)`
 
-注册一个常驻菜单。注册后的菜单 DOM 保留在 `#userchrome-menu-root` 中，打开和关闭只切换显示状态。
+注册一个常驻菜单。注册后的菜单 DOM 保留在 `#userchrome-menu-root` 中，打开和关闭只切换显示状态。菜单超过最大高度时纵向滚动；分隔项保留 9px 布局高度，并在中线通过 1px `border-bottom` 绘制，不会被纵向 flex 布局压缩。
 
 ```js
 const popup = userChrome_js.menu.register({
@@ -120,13 +147,16 @@ const popup = userChrome_js.menu.register({
 
 - `id` 必须是非空字符串；重复注册同一个 id 会替换旧菜单
 - `ariaLabel` 可选，默认为 `菜单`
-- `items` 至少包含一个非分隔项；菜单项支持 `id`、`label`、`disabled`、`shortcut`、`onSelect`、`type: 'checkbox'`、`checked` 和静态 `children`
+- `className` 可选，只接受由字母、数字、`-` 和 `_` 组成的 CSS 类名，可为空格分隔多个类
+- `items` 至少包含一个非分隔项；菜单项支持 `id`、`label`、`icon`、`disabled`、`shortcut`、`onSelect`、`onContextMenu`、`type: 'checkbox'`、`checked` 和静态 `children`；`icon` 为 16px 图标的 URL
+- `label` 支持 Windows 风格助记键：英文使用 `&Save As`，中文使用 `另存为(&S)`；`&&` 显示为字面量 `&`
+- 助记符不会进入纯文本属性：对应菜单按钮的 `getAttribute('label')` 分别返回 `Save As` 和 `另存为`，且可见助记字母以下划线标识
 - `children` 表示子菜单；子菜单项目支持任意层级，但不会异步加载
 - 返回控制器 `{ id, element, open(options), close(reason?), unregister() }`
 
 #### `menu.openPopup(id, options)`
 
-打开已注册菜单。`options` 必须提供且只能提供一种定位方式：`anchor: HTMLElement`（锚点下方）或 `position: { x, y }`（视口坐标）。可选 `restoreFocus` 和 `onClose(reason)`，返回值提供 `close(reason?)`。
+打开已注册菜单。`options` 必须提供且只能提供一种定位方式：`anchor: HTMLElement`（锚点下方）或 `position: { x, y }`（视口坐标）。可选 `restoreFocus`、`onClose(reason)` 和 `preserveCurrent`，返回值提供 `close(reason?)`。`preserveCurrent: true` 会暂存当前菜单，新菜单关闭后恢复原菜单。
 
 ```js
 userChrome_js.menu.openPopup('tools-popup', { anchor: button });
@@ -135,12 +165,12 @@ userChrome_js.menu.openPopup('tools-popup', { anchor: button });
 #### `menu.unregister(id)`、`menu.closePopup(reason?)`、`menu.getPopup(id)`
 
 - `unregister(id)` 移除常驻菜单；菜单正在显示时会先关闭 popup 链
-- `closePopup(reason?)` 关闭当前整组 popup 链；`menu.close(reason?)` 是兼容旧 API 的别名
+- `closePopup(reason?)` 关闭当前整组 popup 链；如果它是通过 `preserveCurrent` 叠加的菜单，则恢复被暂存的 popup；`menu.close(reason?)` 是兼容旧 API 的别名
 - `getPopup(id)` 返回已注册菜单的顶层 DOM 节点，未注册时返回 `null`
 
 #### `menu.open(options)`（兼容 API）
 
-按旧方式创建一次性菜单。必须提供 `anchor` 或 `position` 之一，以及 `items`；菜单关闭后会自动移除。现有调用方无需迁移，也支持 `restoreFocus`、`onClose(reason)` 和静态 `children`。
+按旧方式创建一次性菜单。必须提供 `anchor` 或 `position` 之一，以及 `items`；菜单关闭后会自动移除。现有调用方无需迁移，也支持 `restoreFocus`、`onClose(reason)`、`preserveCurrent`、`className` 和静态 `children`。默认打开会替换已有菜单；`preserveCurrent: true` 用于临时叠加菜单。
 
 锚定菜单示例：
 
@@ -176,9 +206,9 @@ element.addEventListener('contextmenu', function (event) {
 });
 ```
 
-菜单项被选择时会先关闭整条 popup 链并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示。菜单支持鼠标悬停或点击展开子菜单，以及 `ArrowLeft` / `ArrowRight`、`ArrowUp` / `ArrowDown`、`Home` / `End`、`Enter` / `Space`、`Escape` 和 `Tab` 键盘操作。菜单外点击、窗口滚动/缩放和锚点被移除时会关闭或重新定位 popup 链。
+菜单项被选择时会先关闭当前 popup 链并归还焦点，再执行 `onSelect`；勾选项回调参数中的 `checked` 是切换后的值，`previousChecked` 是原值；`shortcut` 仅用于展示。菜单打开时，无 `Ctrl` / `Alt` / `Meta` 修饰的助记字母会在当前层级中生效：唯一匹配项直接执行或展开子菜单，重复匹配项循环聚焦后等待 `Enter`。普通项与分隔项均可提供 `onContextMenu({ id, event, element, position })`，鼠标右键、菜单键和 `Shift+F10` 会阻止浏览器原生菜单并传入菜单项元素及视口坐标，但不会自动关闭原 popup。回调可用 `preserveCurrent: true` 打开临时右键菜单，关闭后恢复原 popup 和来源项目焦点。菜单支持鼠标悬停或点击展开子菜单，以及 `ArrowLeft` / `ArrowRight`、`ArrowUp` / `ArrowDown`、`Home` / `End`、`Enter` / `Space`、`Escape` 和 `Tab` 键盘操作。点击叠菜单之外会关闭整组菜单；窗口滚动/缩放会重新定位，锚点被移除时会关闭相应 popup。
 
-不支持 HTML 菜单项、异步 `childrenProvider` 或快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
+不支持 HTML 菜单项、异步 `childrenProvider` 或全局/组合快捷键分发；变化的勾选状态应由调用脚本保存，并通过重新 `register()` 或 `open()` 传入。
 
 ### `window.userChrome_js.createElement(tag, attrs)`
 
