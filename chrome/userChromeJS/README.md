@@ -14,7 +14,7 @@
 
 ## userChrome.js 公共 API
 
-本目录下的脚本默认运行在 `chrome/userChrome.js` 提供的 UC Loader 环境中，可直接复用以下公共 API。
+本目录下的脚本默认运行在 `chrome/userChrome.js` 提供的 UC Loader 环境中，可直接复用以下公共 API。`$` 由 Loader 在普通 Mod 前加载的 `chrome/utils/domQuery.ac.js` 提供。
 
 ### `window.$(selector, context?)`
 

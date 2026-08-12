@@ -15,6 +15,23 @@
 | 文件名 | 作用 |
 | --- | --- |
 | `alert.ac.js` | 提供全局 `VAlert.show(message, options?)` 非阻塞通知 API |
+| `domQuery.ac.js` | 提供全局 `window.$(selector, context?)` 轻量 DOM 查询与事件辅助 API |
+
+### `window.$(selector, context?)`
+
+返回类 jQuery 风格包装对象，用于操作 Vivaldi 内置界面的 DOM。支持 `each()`、`find()`、`closest()`、`hasClass()`、`addClass()`、`removeClass()`、`toggleClass()`、`on()`、`off()`、`trigger()` 和 `get()`。
+
+委托事件解绑时，需传入注册时相同的事件名、选择器和处理函数引用：
+
+```js
+const closeTab = function (event) {
+    // ...
+};
+const tabStrip = $('#tabs-container .tab-strip');
+
+tabStrip.on('contextmenu', '[role="tab"]', closeTab);
+tabStrip.off('contextmenu', '[role="tab"]', closeTab);
+```
 
 ### `window.VAlert.show(message, options?)`
 
