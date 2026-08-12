@@ -3,7 +3,7 @@
 // @description     Vivaldi UI 全局非阻塞通知 API
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.3.0
+// @version         0.4.2
 // @charset         UTF-8
 // ==/UserScript==
 (() => {
@@ -17,6 +17,7 @@
     const ALERT_POSITION_RIGHT_CLASS = 'userchrome-alert-position-right';
     const ALERT_DEFAULT_DURATION = 3000;
     const ALERT_TYPES = ['info', 'success', 'warn', 'error'];
+    const ALERT_BUTTON_VARIANTS = ['default', 'primary', 'success', 'warning', 'danger'];
     let alertContainer = null;
     let alertMountTimer = null;
     let alertQueue = [];
@@ -26,6 +27,41 @@
     let alertPositionRefreshPending = false;
     let alertPositionResizeListening = false;
     const alertPositionTargets = new WeakSet();
+
+    function normalizeButtons(settings) {
+        let candidates = [];
+        if (Array.isArray(settings.buttons)) {
+            candidates = settings.buttons;
+        } else if (settings.button && typeof settings.button === 'object') {
+            candidates = [settings.button];
+        } else if (typeof settings.undo === 'function') {
+            candidates = [{
+                text: settings.undoText || '撤销',
+                action: settings.undo
+            }];
+        }
+
+        return candidates.reduce(function (buttons, button) {
+            if (!button || typeof button !== 'object' || typeof button.action !== 'function') {
+                return buttons;
+            }
+
+            const text = typeof button.text === 'string' ? button.text.trim() : '';
+            if (!text) {
+                return buttons;
+            }
+
+            buttons.push({
+                text: text,
+                action: button.action,
+                close: button.close !== false,
+                variant: ALERT_BUTTON_VARIANTS.includes(button.variant)
+                    ? button.variant
+                    : 'default'
+            });
+            return buttons;
+        }, []);
+    }
 
     function sanitizeOptions(message, options) {
         const normalizedMessage = typeof message === 'string' ? message.trim() : String(message || '').trim();
@@ -39,6 +75,7 @@
             duration: duration,
             closable: settings.closable !== false,
             onClick: typeof settings.onClick === 'function' ? settings.onClick : null,
+            buttons: normalizeButtons(settings),
             dedupeKey: getAlertDedupeKey(settings.id) || getAlertDedupeKey(settings.messageId)
         };
     }
@@ -225,7 +262,7 @@
                 display: flex;
                 flex-direction: column;
                 gap: 6px;
-                padding: 12px 40px 12px 14px;
+                padding: 10px 12px;
                 border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.16));
                 border-radius: 12px;
                 background: var(--colorBg, rgba(255, 255, 255, 0.96));
@@ -287,6 +324,67 @@
                 font-size: 12px;
                 line-height: 1.5;
                 word-break: break-word;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-actions {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 4px;
+                margin-top: 2px;
+                padding-right: 0;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action {
+                min-height: 26px;
+                max-width: 100%;
+                padding: 3px 8px;
+                border: 1px solid var(--userchrome-alert-button-border, var(--colorHighlightBg, rgba(37, 99, 235, 0.4)));
+                border-radius: 6px;
+                background: var(--userchrome-alert-button-bg, var(--colorHighlightBg, rgba(37, 99, 235, 0.12)));
+                color: var(--userchrome-alert-button-fg, var(--colorHighlightFg, var(--colorFg, #222)));
+                font: inherit;
+                font-size: 12px;
+                line-height: 1.2;
+                cursor: pointer;
+                white-space: normal;
+                transition: background 140ms ease, border-color 140ms ease;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='default'] {
+                --userchrome-alert-button-bg: var(--colorBgLight, rgba(0, 0, 0, 0.06));
+                --userchrome-alert-button-border: var(--colorBorder, rgba(0, 0, 0, 0.2));
+                --userchrome-alert-button-fg: var(--colorFg, #222);
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='primary'] {
+                --userchrome-alert-button-bg: var(--colorHighlightBg, #2563eb);
+                --userchrome-alert-button-border: var(--colorHighlightBg, #2563eb);
+                --userchrome-alert-button-fg: var(--colorHighlightFg, #fff);
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='success'] {
+                --userchrome-alert-button-bg: #2e7d32;
+                --userchrome-alert-button-border: #2e7d32;
+                --userchrome-alert-button-fg: #fff;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='warning'] {
+                --userchrome-alert-button-bg: #b26a00;
+                --userchrome-alert-button-border: #b26a00;
+                --userchrome-alert-button-fg: #fff;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='danger'] {
+                --userchrome-alert-button-bg: #c62828;
+                --userchrome-alert-button-border: #c62828;
+                --userchrome-alert-button-fg: #fff;
+            }
+
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action:hover,
+            #${ALERT_CONTAINER_ID} .userchrome-alert-action:focus-visible {
+                filter: brightness(1.08);
+                outline: none;
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-close {
@@ -452,6 +550,32 @@
             innerText: notification.message
         }));
 
+        if (notification.buttons.length) {
+            const actions = createElement('div', {
+                class: 'userchrome-alert-actions'
+            });
+            notification.buttons.forEach(function (button) {
+                actions.appendChild(createElement('button', {
+                    class: 'userchrome-alert-action',
+                    'data-variant': button.variant,
+                    type: 'button',
+                    innerText: button.text,
+                    onclick: function (event) {
+                        event.stopPropagation();
+                        if (button.close) {
+                            closeAlert(notification);
+                        }
+                        try {
+                            button.action(event, notification);
+                        } catch (error) {
+                            console.error('[VAlert] Alert button action failed.', error);
+                        }
+                    }
+                }));
+            });
+            element.appendChild(actions);
+        }
+
         if (notification.closable) {
             element.appendChild(createElement('button', {
                 class: 'userchrome-alert-close',
@@ -579,6 +703,7 @@
         notification.duration = settings.duration;
         notification.closable = settings.closable;
         notification.onClick = settings.onClick;
+        notification.buttons = settings.buttons;
         updateAlertElement(notification);
         resetAlertTimer(notification);
         return notification;
@@ -608,6 +733,7 @@
             duration: settings.duration,
             closable: settings.closable,
             onClick: settings.onClick,
+            buttons: settings.buttons,
             timerId: null,
             timerStartedAt: null,
             remainingDuration: settings.duration,

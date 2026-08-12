@@ -4,7 +4,7 @@
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | activateTabOnHover.ac.js      | 自动激活鼠标指向标签页（兼容 Vivaldi 8 垂直标签栏）                                                                                 |
 | chromeDevtools_Button.ac.js   | 侧边栏 DevTools 按钮：优先连`localhost:9222` 远程调试端口自动打开 `window.html` 的 DevTools，不可用时回退 `vivaldi://inspect` |
-| test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、助记键、级联子菜单、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制                       |
+| test/menuTest_Button.ac.js    | 侧边栏 Popupset 菜单测试按钮，覆盖注册、助记键、级联子菜单、VAlert 通知、锚定/坐标定位和菜单项右键；`test` 目录不会由安装脚本复制               |
 | modsManager.ac.js             | 侧边栏增加一个统一管理 CSS / JS Mods 的按钮与浮层                                                                                   |
 | rightClickOpenClipboard.ac.js | 右键普通或堆叠新增标签按钮，访问 URL 或用默认搜索引擎搜索剪贴板内容                                                                 |
 | rightClickTabToClose.ac.js    | 右击时模拟中键关闭标签页，复用 Vivaldi 原生的新标签页和标签堆叠逻辑                                                                 |
@@ -71,6 +71,9 @@ const stopObserving = userChrome_js.observeAddedNodes((element) => {
 - `options.title`: 可选标题
 - `options.closable`: 是否显示关闭按钮，默认 `true`
 - `options.onClick`: 点击整条通知时触发，触发后自动关闭当前通知
+- `options.buttons`: 右对齐操作按钮数组，项格式为 `{ text, action, close?, variant? }`；`action(event, notification)` 执行按钮操作，默认关闭通知，`close: false` 可保留通知。`variant` 支持 `default | primary | success | warning | danger`，未指定或无效时使用 `default`；空文本或非函数回调会被忽略
+- `options.button`: `buttons` 的单按钮兼容写法
+- `options.undo` / `options.undoText`: 撤销按钮兼容写法，等价于一个 `button`
 - `options.id`: 非空字符串或数字；相同 ID 更新已有通知并按新的 `duration` 重新计时
 - `options.messageId`: `id` 的兼容别名；同时传入时优先使用 `id`
 
@@ -87,6 +90,23 @@ VAlert.show('需要重启 Vivaldi 后生效', {
 VAlert.show('下载完成', {
     id: 'download-complete',
     type: 'success'
+});
+
+VAlert.show('后台标签页已打开', {
+    buttons: [{
+        text: '撤销',
+        action() {
+            // 执行撤销操作
+        }
+    }]
+});
+
+VAlert.show('需要选择操作', {
+    buttons: [
+        { text: '稍后', action: () => {}, close: false, variant: 'default' },
+        { text: '立即处理', action: () => {}, variant: 'primary' },
+        { text: '删除', action: () => {}, variant: 'danger' }
+    ]
 });
 
 VAlert.show('点击打开 Mod 管理器', {

@@ -37,11 +37,30 @@ tabStrip.off('contextmenu', '[role="tab"]', closeTab);
 
 通知优先挂载到 Vivaldi 的 `#webview-container` 内容区下方：默认右下角，使用右侧垂直标签栏时切换到左下角，避免遮挡标签栏。支持 `info`、`success`、`warn`、`error` 类型；`duration` 默认 `3000` 毫秒，传入 `0` 时保持显示；还支持 `title`、`closable` 和 `onClick`。自动关闭通知在鼠标悬停时暂停计时，移开后按剩余时长继续计时。返回通知对象可通过 `.close()` 手动关闭。
 
+可传入 `buttons` 数组添加右对齐操作按钮，每项格式为 `{ text, action, close?, variant? }`。`action(event, notification)` 在点击时执行，默认关闭通知；设置 `close: false` 可在执行后保留通知。`variant` 可选 `default`、`primary`、`success`、`warning` 或 `danger`，未指定或无效时使用 `default`。无效按钮会被忽略。另兼容单个 `button` 对象以及 `undo` / `undoText` 撤销按钮写法。
+
 可传入非空字符串或数字 `id`（或兼容别名 `messageId`）合并重复通知。相同 ID 会更新已有通知的内容和选项，并按新的 `duration` 重新计时；未传 ID 时每次调用都会创建独立通知。两者同时传入时优先使用 `id`：
 
 ```js
 VAlert.show('下载完成', {
     id: 'download-complete',
     type: 'success'
+});
+
+VAlert.show('后台标签页已打开', {
+    buttons: [{
+        text: '撤销',
+        action() {
+            // 执行撤销操作
+        }
+    }]
+});
+
+VAlert.show('需要选择操作', {
+    buttons: [
+        { text: '稍后', action: () => {}, close: false, variant: 'default' },
+        { text: '立即处理', action: () => {}, variant: 'primary' },
+        { text: '删除', action: () => {}, variant: 'danger' }
+    ]
 });
 ```
