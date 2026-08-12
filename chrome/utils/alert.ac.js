@@ -3,7 +3,7 @@
 // @description     Vivaldi UI 全局非阻塞通知 API
 // @license         MIT License
 // @compatibility   Vivaldi 8.1
-// @version         0.4.2
+// @version         0.4.3
 // @charset         UTF-8
 // ==/UserScript==
 (() => {
@@ -263,11 +263,11 @@
                 flex-direction: column;
                 gap: 6px;
                 padding: 10px 12px;
-                border: 1px solid var(--colorBorder, rgba(0, 0, 0, 0.16));
+                border: 1px solid var(--colorBorder);
                 border-radius: 12px;
-                background: var(--colorBg, rgba(255, 255, 255, 0.96));
-                color: var(--colorFg, #222);
-                box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+                background: var(--colorBg);
+                color: var(--colorFg);
+                box-shadow: 0 16px 40px var(--colorBgAlphaHeavier);
                 backdrop-filter: blur(10px);
                 opacity: 0;
                 transform: translateY(8px);
@@ -286,19 +286,19 @@
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='info'] {
-                border-left: 4px solid #2563eb;
+                border-left: 4px solid var(--colorHighlightBg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='success'] {
-                border-left: 4px solid #2e7d32;
+                border-left: 4px solid var(--colorSuccessBg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='warn'] {
-                border-left: 4px solid #b26a00;
+                border-left: 4px solid var(--colorWarningBg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert[data-type='error'] {
-                border-left: 4px solid #c62828;
+                border-left: 4px solid var(--colorErrorBg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable {
@@ -307,8 +307,8 @@
 
             #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable:hover,
             #${ALERT_CONTAINER_ID} .userchrome-alert.is-clickable:focus-visible {
-                border-color: var(--colorHighlightBg, rgba(37, 99, 235, 0.4));
-                box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+                border-color: var(--colorHighlightBg);
+                box-shadow: 0 18px 44px var(--colorBgAlphaHeavier);
                 outline: none;
             }
 
@@ -339,10 +339,10 @@
                 min-height: 26px;
                 max-width: 100%;
                 padding: 3px 8px;
-                border: 1px solid var(--userchrome-alert-button-border, var(--colorHighlightBg, rgba(37, 99, 235, 0.4)));
+                border: 1px solid var(--userchrome-alert-button-border, var(--colorHighlightBg));
                 border-radius: 6px;
-                background: var(--userchrome-alert-button-bg, var(--colorHighlightBg, rgba(37, 99, 235, 0.12)));
-                color: var(--userchrome-alert-button-fg, var(--colorHighlightFg, var(--colorFg, #222)));
+                background: var(--userchrome-alert-button-bg, var(--colorHighlightBg));
+                color: var(--userchrome-alert-button-fg, var(--colorHighlightFg));
                 font: inherit;
                 font-size: 12px;
                 line-height: 1.2;
@@ -352,33 +352,33 @@
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='default'] {
-                --userchrome-alert-button-bg: var(--colorBgLight, rgba(0, 0, 0, 0.06));
-                --userchrome-alert-button-border: var(--colorBorder, rgba(0, 0, 0, 0.2));
-                --userchrome-alert-button-fg: var(--colorFg, #222);
+                --userchrome-alert-button-bg: var(--colorBgLight);
+                --userchrome-alert-button-border: var(--colorBorder);
+                --userchrome-alert-button-fg: var(--colorFg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='primary'] {
-                --userchrome-alert-button-bg: var(--colorHighlightBg, #2563eb);
-                --userchrome-alert-button-border: var(--colorHighlightBg, #2563eb);
-                --userchrome-alert-button-fg: var(--colorHighlightFg, #fff);
+                --userchrome-alert-button-bg: var(--colorHighlightBg);
+                --userchrome-alert-button-border: var(--colorHighlightBg);
+                --userchrome-alert-button-fg: var(--colorHighlightFg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='success'] {
-                --userchrome-alert-button-bg: #2e7d32;
-                --userchrome-alert-button-border: #2e7d32;
-                --userchrome-alert-button-fg: #fff;
+                --userchrome-alert-button-bg: var(--colorSuccessBg);
+                --userchrome-alert-button-border: var(--colorSuccessBg);
+                --userchrome-alert-button-fg: var(--colorSuccessFg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='warning'] {
-                --userchrome-alert-button-bg: #b26a00;
-                --userchrome-alert-button-border: #b26a00;
-                --userchrome-alert-button-fg: #fff;
+                --userchrome-alert-button-bg: var(--colorWarningBg);
+                --userchrome-alert-button-border: var(--colorWarningBg);
+                --userchrome-alert-button-fg: var(--colorWarningFg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action[data-variant='danger'] {
-                --userchrome-alert-button-bg: #c62828;
-                --userchrome-alert-button-border: #c62828;
-                --userchrome-alert-button-fg: #fff;
+                --userchrome-alert-button-bg: var(--colorErrorBg);
+                --userchrome-alert-button-border: var(--colorErrorBg);
+                --userchrome-alert-button-fg: var(--colorErrorFg);
             }
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-action:hover,
@@ -406,7 +406,7 @@
 
             #${ALERT_CONTAINER_ID} .userchrome-alert-close:hover,
             #${ALERT_CONTAINER_ID} .userchrome-alert-close:focus-visible {
-                background: rgba(0, 0, 0, 0.08);
+                background: var(--colorBgAlphaHeavier);
                 opacity: 1;
                 outline: none;
             }

@@ -35,7 +35,7 @@ tabStrip.off('contextmenu', '[role="tab"]', closeTab);
 
 ### `window.VAlert.show(message, options?)`
 
-通知优先挂载到 Vivaldi 的 `#webview-container` 内容区下方：默认右下角，使用右侧垂直标签栏时切换到左下角，避免遮挡标签栏。支持 `info`、`success`、`warn`、`error` 类型；`duration` 默认 `3000` 毫秒，传入 `0` 时保持显示；还支持 `title`、`closable` 和 `onClick`。自动关闭通知在鼠标悬停时暂停计时，移开后按剩余时长继续计时。返回通知对象可通过 `.close()` 手动关闭。
+通知优先挂载到 Vivaldi 的 `#webview-container` 内容区下方：默认右下角，使用右侧垂直标签栏时切换到左下角，避免遮挡标签栏。通知面板、按钮及类型强调色使用 Vivaldi 内联主题变量，会跟随浅色、深色和自定义主题切换。支持 `info`、`success`、`warn`、`error` 类型；`duration` 默认 `3000` 毫秒，传入 `0` 时保持显示；还支持 `title`、`closable` 和 `onClick`。自动关闭通知在鼠标悬停时暂停计时，移开后按剩余时长继续计时。返回通知对象可通过 `.close()` 手动关闭。
 
 可传入 `buttons` 数组添加右对齐操作按钮，每项格式为 `{ text, action, close?, variant? }`。`action(event, notification)` 在点击时执行，默认关闭通知；设置 `close: false` 可在执行后保留通知。`variant` 可选 `default`、`primary`、`success`、`warning` 或 `danger`，未指定或无效时使用 `default`。无效按钮会被忽略。另兼容单个 `button` 对象以及 `undo` / `undoText` 撤销按钮写法。
 
