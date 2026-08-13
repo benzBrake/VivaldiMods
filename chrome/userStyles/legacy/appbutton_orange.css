@@ -8,7 +8,7 @@
  * @compatibility       Vivaldi 7.9
  * @homepageURL         https://github.com/benzBrake/VivaldiMods
 ==/UserStyle== */
-#tabs-tabbar-container {
+#tabs-tabbar-container, #main {
     --menuWidth: 92px;
     --menuText: "Firefox";
     --ffIconSize: 16px;
